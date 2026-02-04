@@ -6,6 +6,7 @@ interface ProgressBarProps {
   height?: number;
   showLabel?: boolean;
   animated?: boolean;
+  label?: string;
 }
 
 export function ProgressBar({
@@ -14,6 +15,7 @@ export function ProgressBar({
   height = 8,
   showLabel = false,
   animated = true,
+  label = 'Progress',
 }: ProgressBarProps) {
   const clampedProgress = Math.min(100, Math.max(0, progress));
 
@@ -21,6 +23,11 @@ export function ProgressBar({
     <div className="w-full">
       <div
         className="w-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={Math.round(clampedProgress)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label}
         style={{
           height,
           background: 'var(--bg-input)',

@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Plus, ListTodo, Trash2 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { TaskForm } from './TaskForm';
 import { TaskCard } from './TaskCard';
 import { useTaskStore } from '../../stores/taskStore';
@@ -21,6 +22,11 @@ export function TodoList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState<TodoItem | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; todoId: string | null }>({
+    isOpen: false,
+    todoId: null,
+  });
+  const [clearConfirm, setClearConfirm] = useState(false);
 
   const filteredTodos = todos.filter((todo) => {
     if (filter === 'active') return !todo.completed;
@@ -48,13 +54,25 @@ export function TodoList() {
   };
 
   const handleDelete = (id: string) => {
-    deleteTodo(id);
-    toast.success('Todo deleted');
+    setDeleteConfirm({ isOpen: true, todoId: id });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm.todoId) {
+      deleteTodo(deleteConfirm.todoId);
+      toast.success('Todo deleted');
+    }
+    setDeleteConfirm({ isOpen: false, todoId: null });
   };
 
   const handleClearCompleted = () => {
+    setClearConfirm(true);
+  };
+
+  const confirmClearCompleted = () => {
     clearCompletedTodos();
     toast.success(`Cleared ${completedCount} completed todos`);
+    setClearConfirm(false);
   };
 
   const handleCloseModal = () => {
@@ -181,6 +199,28 @@ export function TodoList() {
           onCancel={handleCloseModal}
         />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Todo"
+        message="Are you sure you want to delete this todo? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, todoId: null })}
+      />
+
+      <ConfirmDialog
+        isOpen={clearConfirm}
+        title="Clear Completed"
+        message={`Are you sure you want to delete ${completedCount} completed todo${completedCount === 1 ? '' : 's'}? This action cannot be undone.`}
+        confirmLabel="Clear All"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmClearCompleted}
+        onCancel={() => setClearConfirm(false)}
+      />
     </div>
   );
 }

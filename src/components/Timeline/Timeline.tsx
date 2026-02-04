@@ -1,3 +1,4 @@
+import { useState, useEffect, Fragment } from 'react';
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
   DndContext,
@@ -14,10 +15,11 @@ import {
 } from '@dnd-kit/sortable';
 import type { ScheduledTask } from '../../types';
 import { TimelineItem } from './TimelineItem';
+import { NowIndicator } from './NowIndicator';
 import { ProgressBar } from '../common/ProgressBar';
 import { getDayProgress } from '../../utils/scheduler';
 import { Calendar, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO, isBefore, isAfter } from 'date-fns';
 import { useScheduleStore } from '../../stores/scheduleStore';
 
 interface TimelineProps {
@@ -28,11 +30,47 @@ interface TimelineProps {
 
 export function Timeline({ schedule, activeTaskId, onTaskClick }: TimelineProps) {
   const reorderSchedule = useScheduleStore((state) => state.reorderSchedule);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const progress = getDayProgress(schedule);
   const completedCount = schedule.filter(
     (t) => t.status === 'completed' && t.sourceType !== 'break'
   ).length;
   const totalCount = schedule.filter((t) => t.sourceType !== 'break').length;
+
+  // Find where the "now" indicator should be placed
+  const findNowPosition = (): number => {
+    if (schedule.length === 0) return -1;
+
+    for (let i = 0; i < schedule.length; i++) {
+      const task = schedule[i];
+      const taskStart = parseISO(task.scheduledStart);
+      const taskEnd = parseISO(task.scheduledEnd);
+
+      // If current time is before this task starts, show indicator before this task
+      if (isBefore(currentTime, taskStart)) {
+        return i;
+      }
+
+      // If current time is during this task, show indicator before this task
+      if (!isBefore(currentTime, taskStart) && !isAfter(currentTime, taskEnd)) {
+        return i;
+      }
+    }
+
+    // Current time is after all tasks
+    return schedule.length;
+  };
+
+  const nowPosition = findNowPosition();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -110,14 +148,17 @@ export function Timeline({ schedule, activeTaskId, onTaskClick }: TimelineProps)
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-1">
-                {schedule.map((task) => (
-                  <TimelineItem
-                    key={task.id}
-                    task={task}
-                    isActive={task.id === activeTaskId}
-                    onClick={() => onTaskClick(task.id)}
-                  />
+                {schedule.map((task, index) => (
+                  <Fragment key={task.id}>
+                    {nowPosition === index && <NowIndicator />}
+                    <TimelineItem
+                      task={task}
+                      isActive={task.id === activeTaskId}
+                      onClick={() => onTaskClick(task.id)}
+                    />
+                  </Fragment>
                 ))}
+                {nowPosition === schedule.length && <NowIndicator />}
               </div>
             </SortableContext>
           </DndContext>

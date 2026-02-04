@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,6 +8,7 @@ import {
   Settings,
   Play,
   RefreshCw,
+  Clock,
 } from 'lucide-react';
 
 // Components
@@ -19,6 +20,8 @@ import { ScheduleSettings } from './components/Settings/ScheduleSettings';
 import { ExportImport } from './components/Settings/ExportImport';
 import { ThemeSelector } from './components/Settings/ThemeSelector';
 import { Button } from './components/common/Button';
+import { ConfirmDialog } from './components/common/ConfirmDialog';
+import { ProgressBar } from './components/common/ProgressBar';
 
 // Stores
 import { useTaskStore } from './stores/taskStore';
@@ -32,13 +35,16 @@ import { useSunPosition } from './hooks/useSunPosition';
 import type { Timeframe } from './types';
 
 // Utils
-import { generateDailySchedule } from './utils/scheduler';
+import { generateDailySchedule, getTotalScheduledMinutes } from './utils/scheduler';
 import toast from 'react-hot-toast';
+import { format, addMinutes, parse } from 'date-fns';
 
 type Tab = 'dashboard' | 'core' | 'todos' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const currentTaskRef = useRef<{ togglePause: () => void } | null>(null);
 
   // Stores
   const { coreTasks, todos, updateTodo } = useTaskStore();
@@ -76,12 +82,22 @@ function App() {
   } = useScheduleStore();
 
   // Generate today's schedule
-  const regenerateSchedule = useCallback(() => {
+  const doRegenerateSchedule = useCallback(() => {
     const dayConfig = getTodayScheduleConfig();
     const schedule = generateDailySchedule(coreTasks, todos, dayConfig);
     setTodaySchedule(schedule);
     toast.success('Schedule regenerated');
+    setShowRegenerateConfirm(false);
   }, [coreTasks, todos, getTodayScheduleConfig, setTodaySchedule]);
+
+  const regenerateSchedule = useCallback(() => {
+    // Show confirmation if day has started (to warn about losing manual reordering)
+    if (todaySchedule.some((t) => t.status !== 'pending')) {
+      setShowRegenerateConfirm(true);
+    } else {
+      doRegenerateSchedule();
+    }
+  }, [todaySchedule, doRegenerateSchedule]);
 
   // Auto-generate schedule on mount
   useEffect(() => {
@@ -91,6 +107,31 @@ function App() {
       setTodaySchedule(schedule);
     }
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Space = Complete current task (only on dashboard)
+      if (e.key === ' ' && activeTab === 'dashboard' && activeTaskId) {
+        e.preventDefault();
+        handleCompleteTask();
+      }
+
+      // P = Toggle pause
+      if ((e.key === 'p' || e.key === 'P') && activeTab === 'dashboard') {
+        e.preventDefault();
+        currentTaskRef.current?.togglePause();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, activeTaskId]);
 
   // Start the day
   const handleStartDay = () => {
@@ -176,6 +217,26 @@ function App() {
   // Get active task
   const activeTask = todaySchedule.find((t) => t.id === activeTaskId) || null;
   const hasStartedDay = todaySchedule.some((t) => t.status !== 'pending');
+
+  // Calculate dashboard metrics
+  const dayConfig = getTodayScheduleConfig();
+  const totalScheduledMinutes = getTotalScheduledMinutes(todaySchedule);
+  const startTime = parse(dayConfig.startTime, 'HH:mm', new Date());
+  const endTime = parse(dayConfig.endTime, 'HH:mm', new Date());
+  const availableMinutes = Math.max(0, (endTime.getTime() - startTime.getTime()) / 60000);
+  const scheduledPercentage = availableMinutes > 0 ? Math.min((totalScheduledMinutes / availableMinutes) * 100, 100) : 0;
+  const estimatedEndTime = totalScheduledMinutes > 0
+    ? format(addMinutes(startTime, totalScheduledMinutes), 'h:mm a')
+    : null;
+
+  // Format duration for display
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) return `${mins}m`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}m`;
+  };
 
   // Navigation items
   const navItems = [
@@ -278,9 +339,51 @@ function App() {
                             return 'Good evening';
                           })()}
                         </h2>
-                        <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
+                        <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
                           {coreTasks.length} core tasks, {todos.filter((t) => !t.completed).length} todos
                         </p>
+
+                        {/* Dashboard Metrics */}
+                        {totalScheduledMinutes > 0 && (
+                          <div
+                            className="mb-6 p-4 text-left"
+                            style={{
+                              background: 'var(--bg-secondary)',
+                              borderRadius: 'var(--border-radius-md)',
+                            }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                Today's Schedule
+                              </span>
+                              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                {formatDuration(totalScheduledMinutes)}
+                              </span>
+                            </div>
+                            <ProgressBar
+                              progress={scheduledPercentage}
+                              height={6}
+                              color={scheduledPercentage > 100 ? 'var(--status-danger)' : 'var(--accent-primary)'}
+                            />
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                {Math.round(scheduledPercentage)}% of day
+                              </span>
+                              {estimatedEndTime && (
+                                <span className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                                  <Clock size={12} />
+                                  Est. done by {estimatedEndTime}
+                                </span>
+                              )}
+                            </div>
+                            {scheduledPercentage > 100 && (
+                              <p className="text-xs mt-2" style={{ color: 'var(--status-danger)' }}>
+                                ⚠️ Overbooked! Consider reducing tasks or extending work hours.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         <Button onClick={handleStartDay} size="lg">
                           <Play size={18} className="mr-2" />
                           Start Day
@@ -369,6 +472,17 @@ function App() {
             </AnimatePresence>
           </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={showRegenerateConfirm}
+        title="Regenerate Schedule"
+        message="This will reset your schedule and any manual reordering you've done. Are you sure you want to continue?"
+        confirmLabel="Regenerate"
+        cancelLabel="Cancel"
+        variant="warning"
+        onConfirm={doRegenerateSchedule}
+        onCancel={() => setShowRegenerateConfirm(false)}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Plus, Target } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { TaskForm } from './TaskForm';
 import { TaskCard } from './TaskCard';
 import { useTaskStore } from '../../stores/taskStore';
@@ -13,6 +14,10 @@ export function CoreTaskList() {
   const { coreTasks, addCoreTask, updateCoreTask, deleteCoreTask } = useTaskStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<CoreTask | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; taskId: string | null }>({
+    isOpen: false,
+    taskId: null,
+  });
 
   const handleSubmit = (data: Omit<CoreTask, 'id'>) => {
     if (editingTask) {
@@ -32,8 +37,15 @@ export function CoreTaskList() {
   };
 
   const handleDelete = (id: string) => {
-    deleteCoreTask(id);
-    toast.success('Task deleted');
+    setDeleteConfirm({ isOpen: true, taskId: id });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm.taskId) {
+      deleteCoreTask(deleteConfirm.taskId);
+      toast.success('Task deleted');
+    }
+    setDeleteConfirm({ isOpen: false, taskId: null });
   };
 
   const handleCloseModal = () => {
@@ -118,6 +130,17 @@ export function CoreTaskList() {
           onCancel={handleCloseModal}
         />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Core Task"
+        message="Are you sure you want to delete this task? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, taskId: null })}
+      />
     </div>
   );
 }

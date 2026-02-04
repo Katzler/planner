@@ -34,69 +34,91 @@ interface DayRowProps {
 }
 
 function DayRow({ label, schedule, onChange }: DayRowProps) {
+  // Validate times - startTime must be before endTime
+  const isTimeInvalid = schedule.enabled && schedule.startTime >= schedule.endTime;
+
+  const timeInputStyle = {
+    ...inputStyle,
+    ...(isTimeInvalid && {
+      borderColor: 'var(--status-danger)',
+      background: 'var(--status-danger-bg)',
+    }),
+  };
+
   return (
     <motion.div
       layout
-      className="flex items-center gap-4 p-4 transition-colors"
-      style={{
-        borderRadius: 'var(--border-radius-md)',
-        background: schedule.enabled ? 'var(--bg-input)' : 'var(--bg-secondary)',
-        opacity: schedule.enabled ? 1 : 0.6,
-      }}
+      className="flex flex-col gap-2"
     >
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={schedule.enabled}
-          onChange={(e) => onChange({ enabled: e.target.checked })}
-          className="w-5 h-5"
-          style={{
-            accentColor: 'var(--accent-primary)',
-          }}
-        />
-        <span className="w-24 font-medium" style={{ color: 'var(--text-primary)' }}>
-          {label}
-        </span>
-      </label>
+      <div
+        className="flex items-center gap-4 p-4 transition-colors"
+        style={{
+          borderRadius: 'var(--border-radius-md)',
+          background: schedule.enabled ? 'var(--bg-input)' : 'var(--bg-secondary)',
+          opacity: schedule.enabled ? 1 : 0.6,
+        }}
+      >
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={schedule.enabled}
+            onChange={(e) => onChange({ enabled: e.target.checked })}
+            className="w-5 h-5"
+            style={{
+              accentColor: 'var(--accent-primary)',
+            }}
+          />
+          <span className="w-24 font-medium" style={{ color: 'var(--text-primary)' }}>
+            {label}
+          </span>
+        </label>
 
-      <div className="flex items-center gap-2">
-        <input
-          type="time"
-          value={schedule.startTime}
-          onChange={(e) => onChange({ startTime: e.target.value })}
-          disabled={!schedule.enabled}
-          style={inputStyle}
-          className="focus:outline-none focus:ring-2 disabled:opacity-50"
-        />
-        <span style={{ color: 'var(--text-secondary)' }}>to</span>
-        <input
-          type="time"
-          value={schedule.endTime}
-          onChange={(e) => onChange({ endTime: e.target.value })}
-          disabled={!schedule.enabled}
-          style={inputStyle}
-          className="focus:outline-none focus:ring-2 disabled:opacity-50"
-        />
-      </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="time"
+            value={schedule.startTime}
+            onChange={(e) => onChange({ startTime: e.target.value })}
+            disabled={!schedule.enabled}
+            style={timeInputStyle}
+            className="focus:outline-none focus:ring-2 disabled:opacity-50"
+            aria-invalid={isTimeInvalid}
+          />
+          <span style={{ color: 'var(--text-secondary)' }}>to</span>
+          <input
+            type="time"
+            value={schedule.endTime}
+            onChange={(e) => onChange({ endTime: e.target.value })}
+            disabled={!schedule.enabled}
+            style={timeInputStyle}
+            className="focus:outline-none focus:ring-2 disabled:opacity-50"
+            aria-invalid={isTimeInvalid}
+          />
+        </div>
 
-      <div className="flex items-center gap-2 ml-auto">
-        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Break:
-        </span>
-        <input
-          type="number"
-          value={schedule.breakDuration}
-          onChange={(e) => onChange({ breakDuration: Number(e.target.value) })}
-          disabled={!schedule.enabled}
-          min={0}
-          max={60}
-          style={{ ...inputStyle, width: '64px' }}
-          className="focus:outline-none focus:ring-2 disabled:opacity-50"
-        />
-        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          min
-        </span>
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Break:
+          </span>
+          <input
+            type="number"
+            value={schedule.breakDuration}
+            onChange={(e) => onChange({ breakDuration: Number(e.target.value) })}
+            disabled={!schedule.enabled}
+            min={0}
+            max={60}
+            style={{ ...inputStyle, width: '64px' }}
+            className="focus:outline-none focus:ring-2 disabled:opacity-50"
+          />
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            min
+          </span>
+        </div>
       </div>
+      {isTimeInvalid && (
+        <p className="text-xs pl-4" style={{ color: 'var(--status-danger)' }}>
+          End time must be after start time
+        </p>
+      )}
     </motion.div>
   );
 }

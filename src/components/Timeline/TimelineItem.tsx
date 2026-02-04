@@ -37,6 +37,12 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
   const timeframeConfig = task.timeframe ? TIMEFRAME_CONFIG[task.timeframe] : null;
 
   const getBackgroundStyle = () => {
+    if (isBreak) {
+      return {
+        background: 'rgba(0, 0, 0, 0.15)',
+        borderLeft: '3px solid var(--text-muted)',
+      };
+    }
     if (isActive) {
       return {
         background: 'var(--accent-bg)',
@@ -57,6 +63,15 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
     return {};
   };
 
+  // Breaks should not be interactive
+  const interactiveProps = isBreak
+    ? {}
+    : {
+        onClick,
+        ...attributes,
+        ...listeners,
+      };
+
   return (
     <div
       ref={setNodeRef}
@@ -64,13 +79,12 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
         ...style,
         ...getBackgroundStyle(),
         borderRadius: 'var(--border-radius-md)',
+        opacity: isBreak ? 0.7 : style.opacity,
       }}
-      onClick={onClick}
-      {...attributes}
-      {...listeners}
-      className={`relative flex items-center gap-3 py-3 px-4 cursor-grab active:cursor-grabbing transition-colors touch-none ${
-        isDragging ? 'scale-[1.02]' : ''
-      }`}
+      {...interactiveProps}
+      className={`relative flex items-center gap-3 py-2 px-4 transition-colors touch-none ${
+        isBreak ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+      } ${isDragging ? 'scale-[1.02]' : ''}`}
     >
       {/* Time */}
       <div className="w-12 text-right shrink-0">

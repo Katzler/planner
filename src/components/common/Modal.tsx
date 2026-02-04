@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -10,6 +10,50 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus trap and keyboard handling
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Focus the close button when modal opens
+    const timer = setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 50);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape to close
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      // Focus trap
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -32,6 +76,10 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="modal-title"
               className="w-full max-w-lg max-h-[90vh] overflow-hidden"
               style={{
                 background: 'var(--bg-card)',
@@ -47,14 +95,17 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
                 }}
               >
                 <h2
+                  id="modal-title"
                   className="text-xl font-semibold"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   {title}
                 </h2>
                 <button
+                  ref={closeButtonRef}
                   onClick={onClose}
-                  className="p-1 transition-colors"
+                  aria-label="Close modal"
+                  className="p-1 transition-colors focus:outline-none focus:ring-2"
                   style={{
                     borderRadius: 'var(--border-radius-sm)',
                     color: 'var(--text-muted)',
