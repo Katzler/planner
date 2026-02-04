@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { addDays } from 'date-fns';
 import type {
   WeekSchedule,
   DaySchedule,
@@ -29,6 +30,9 @@ interface ScheduleState {
   // Helpers
   getTodayScheduleConfig: () => DaySchedule;
   getCurrentDayKey: () => DayOfWeek;
+  getScheduleConfigForDate: (date: Date) => DaySchedule;
+  getDayKeyForDate: (date: Date) => DayOfWeek;
+  getNextWorkDay: () => Date;
 }
 
 
@@ -149,6 +153,42 @@ export const useScheduleStore = create<ScheduleState>()(
         const state = get();
         const dayKey = state.getCurrentDayKey();
         return state.weekSchedule[dayKey];
+      },
+
+      getDayKeyForDate: (date: Date) => {
+        const days: DayOfWeek[] = [
+          'sunday',
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+        ];
+        return days[date.getDay()];
+      },
+
+      getScheduleConfigForDate: (date: Date) => {
+        const state = get();
+        const dayKey = state.getDayKeyForDate(date);
+        return state.weekSchedule[dayKey];
+      },
+
+      getNextWorkDay: () => {
+        const state = get();
+        let checkDate = addDays(new Date(), 1); // Start from tomorrow
+
+        // Check up to 7 days ahead to find the next work day
+        for (let i = 0; i < 7; i++) {
+          const dayConfig = state.getScheduleConfigForDate(checkDate);
+          if (dayConfig.enabled) {
+            return checkDate;
+          }
+          checkDate = addDays(checkDate, 1);
+        }
+
+        // Fallback to tomorrow if no work days found (shouldn't happen)
+        return addDays(new Date(), 1);
       },
     }),
     {

@@ -11,12 +11,14 @@ import {
   getDay,
   setHours,
   setMinutes,
+  startOfDay,
   startOfWeek,
   endOfWeek,
   addWeeks,
   startOfMonth,
   endOfMonth,
   isWithinInterval,
+  differenceInDays,
 } from 'date-fns';
 
 const generateId = () => crypto.randomUUID().split('-')[0];
@@ -155,6 +157,75 @@ function parseTimeToday(timeStr: string): Date {
   const today = new Date();
   const [hours, minutes] = timeStr.split(':').map(Number);
   return setMinutes(setHours(today, hours), minutes);
+}
+
+// Parse time string to Date object for a specific date
+function parseTimeForDate(timeStr: string, date: Date): Date {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return setMinutes(setHours(date, hours), minutes);
+}
+
+// Check if a core task should run on a specific date
+export function shouldCoreTaskRunOnDate(task: CoreTask, date: Date): boolean {
+  const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
+  const dayOfMonth = date.getDate();
+
+  switch (task.recurrence.type) {
+    case 'daily':
+      if (task.recurrence.daysOfWeek && task.recurrence.daysOfWeek.length > 0) {
+        return task.recurrence.daysOfWeek.includes(dayOfWeek);
+      }
+      return true;
+
+    case 'weekly':
+      return task.recurrence.daysOfWeek?.includes(dayOfWeek) ?? false;
+
+    case 'monthly':
+      return task.recurrence.dayOfMonth === dayOfMonth;
+
+    default:
+      return false;
+  }
+}
+
+// Check if a todo should be scheduled for a specific date based on its timeframe
+export function isTodoEligibleForDate(todo: TodoItem, date: Date): boolean {
+  const today = startOfDay(new Date());
+  const targetDate = startOfDay(date);
+  const daysFromToday = differenceInDays(targetDate, today);
+  const timeframe = todo.timeframe || 'this_week';
+
+  switch (timeframe) {
+    case 'today':
+      // "Today" tasks are only for today
+      return daysFromToday === 0;
+    case 'tomorrow':
+      // "Tomorrow" tasks become eligible on that day
+      return daysFromToday <= 1;
+    case 'this_week': {
+      // Include if target date is within the current week
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+      return isWithinInterval(targetDate, { start: weekStart, end: weekEnd });
+    }
+    case 'next_week': {
+      // Include if target date is within next week
+      const nextWeekStart = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
+      const nextWeekEnd = endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
+      return isWithinInterval(targetDate, { start: nextWeekStart, end: nextWeekEnd });
+    }
+    case 'this_month': {
+      // Include if target date is within the current month
+      const monthStart = startOfMonth(today);
+      const monthEnd = endOfMonth(today);
+      return isWithinInterval(targetDate, { start: monthStart, end: monthEnd });
+    }
+    case 'someday':
+      // Someday tasks are always potentially eligible
+      return true;
+    default:
+      return true;
+  }
 }
 
 // Calculate time slots for spread tasks (tasks done multiple times per day)
@@ -477,4 +548,258 @@ export function getDayProgress(schedule: ScheduledTask[]): number {
   const total = getTotalScheduledMinutes(schedule);
   const completed = getCompletedMinutes(schedule);
   return total > 0 ? (completed / total) * 100 : 0;
+}
+
+// Generate schedule for a specific date (preview mode - all tasks pending)
+export function generateScheduleForDate(
+  date: Date,
+  coreTasks: CoreTask[],
+  todos: TodoItem[],
+  dayConfig: DaySchedule
+): ScheduledTask[] {
+  if (!dayConfig.enabled) {
+    return [];
+  }
+
+  const schedule: ScheduledTask[] = [];
+  const startTime = parseTimeForDate(dayConfig.startTime, date);
+  const endTime = parseTimeForDate(dayConfig.endTime, date);
+  const breakDuration = dayConfig.breakDuration;
+
+  // Filter tasks for the target date
+  const dateTasks = coreTasks.filter((task) => shouldCoreTaskRunOnDate(task, date));
+  const eligibleTodos = sortTodosByTimeframe(
+    todos.filter((t) => !t.completed && isTodoEligibleForDate(t, date))
+  );
+
+  // Handle spread tasks
+  const spreadTasks = dateTasks.filter((t) => t.preferredTime === 'spread' || (t.timesPerDay && t.timesPerDay > 1));
+  const regularTasks = dateTasks.filter((t) => t.preferredTime !== 'spread' && (!t.timesPerDay || t.timesPerDay === 1));
+
+  // Group by preferred time
+  const morningTasks = regularTasks.filter((t) => t.preferredTime === 'morning');
+  const middayTasks = regularTasks.filter((t) => t.preferredTime === 'midday');
+  const afternoonTasks = regularTasks.filter((t) => t.preferredTime === 'afternoon');
+  const remainingAnytimeTasks = [...regularTasks.filter((t) => t.preferredTime === 'anytime')];
+
+  const scheduledTodoIds = new Set<string>();
+
+  // Pre-calculate spread task slots
+  interface SpreadSlot {
+    time: Date;
+    task: CoreTask;
+    instanceNumber: number;
+  }
+  const spreadSlots: SpreadSlot[] = [];
+
+  for (const task of spreadTasks) {
+    const times = task.timesPerDay || 1;
+    const slots = getSpreadSlots(times, startTime, endTime);
+    slots.forEach((slotTime, index) => {
+      spreadSlots.push({
+        time: slotTime,
+        task,
+        instanceNumber: index + 1,
+      });
+    });
+  }
+
+  spreadSlots.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+  let currentTime = new Date(startTime);
+  let spreadSlotIndex = 0;
+
+  // Helper to add a task with break
+  const addTask = (
+    sourceId: string,
+    sourceType: 'core' | 'todo',
+    title: string,
+    duration: number,
+    timeframe?: Timeframe,
+    color?: string
+  ) => {
+    if (currentTime >= endTime) return false;
+
+    const taskEnd = addMinutes(currentTime, duration);
+    const actualEnd = taskEnd > endTime ? endTime : taskEnd;
+    const actualDuration = (actualEnd.getTime() - currentTime.getTime()) / (1000 * 60);
+
+    schedule.push({
+      id: generateId(),
+      sourceId,
+      sourceType,
+      title,
+      scheduledStart: currentTime.toISOString(),
+      scheduledEnd: actualEnd.toISOString(),
+      status: 'pending',
+      duration: actualDuration,
+      timeframe,
+      color,
+    });
+
+    currentTime = actualEnd;
+
+    if (breakDuration > 0 && currentTime < endTime) {
+      const breakEnd = addMinutes(currentTime, breakDuration);
+      if (breakEnd <= endTime) {
+        schedule.push(createBreak(currentTime, breakDuration));
+        currentTime = breakEnd;
+      }
+    }
+
+    return true;
+  };
+
+  const shouldInsertSpreadTask = (): SpreadSlot | null => {
+    if (spreadSlotIndex >= spreadSlots.length) return null;
+    const nextSpread = spreadSlots[spreadSlotIndex];
+    if (currentTime >= nextSpread.time ||
+        addMinutes(currentTime, 30).getTime() > nextSpread.time.getTime()) {
+      return nextSpread;
+    }
+    return null;
+  };
+
+  const insertSpreadTask = (slot: SpreadSlot) => {
+    const times = slot.task.timesPerDay || 1;
+    const title = times > 1
+      ? `${slot.task.title} (${slot.instanceNumber}/${times})`
+      : slot.task.title;
+    addTask(slot.task.id, 'core', title, slot.task.duration, undefined, slot.task.color || '#6366f1');
+    spreadSlotIndex++;
+  };
+
+  // Schedule morning core tasks
+  for (const task of morningTasks) {
+    let spreadSlot = shouldInsertSpreadTask();
+    while (spreadSlot && currentTime < endTime) {
+      insertSpreadTask(spreadSlot);
+      spreadSlot = shouldInsertSpreadTask();
+    }
+    addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
+  }
+
+  // Fill with urgent todos in morning
+  const morningSlotEnd = getTimeSlot('morning', startTime, endTime).end;
+  for (const todo of eligibleTodos) {
+    if (currentTime >= morningSlotEnd) break;
+    if (scheduledTodoIds.has(todo.id)) continue;
+
+    const spreadSlot = shouldInsertSpreadTask();
+    if (spreadSlot) {
+      insertSpreadTask(spreadSlot);
+    }
+
+    if (currentTime >= morningSlotEnd) break;
+
+    const timeframe = todo.timeframe || 'this_week';
+    if (timeframe === 'today' || timeframe === 'tomorrow') {
+      addTask(
+        todo.id,
+        'todo',
+        todo.title,
+        todo.duration,
+        timeframe,
+        TIMEFRAME_CONFIG[timeframe].color
+      );
+      scheduledTodoIds.add(todo.id);
+    }
+  }
+
+  // Move to midday
+  const middaySlotStart = getTimeSlot('midday', startTime, endTime).start;
+  if (currentTime < middaySlotStart && middayTasks.length > 0) {
+    while (currentTime < middaySlotStart && remainingAnytimeTasks.length > 0) {
+      const spreadSlot = shouldInsertSpreadTask();
+      if (spreadSlot) {
+        insertSpreadTask(spreadSlot);
+        continue;
+      }
+      const task = remainingAnytimeTasks.shift()!;
+      addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
+    }
+  }
+
+  // Schedule midday core tasks
+  for (const task of middayTasks) {
+    let spreadSlot = shouldInsertSpreadTask();
+    while (spreadSlot && currentTime < endTime) {
+      insertSpreadTask(spreadSlot);
+      spreadSlot = shouldInsertSpreadTask();
+    }
+    addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
+  }
+
+  // Move to afternoon
+  const afternoonSlotStart = getTimeSlot('afternoon', startTime, endTime).start;
+  if (currentTime < afternoonSlotStart && afternoonTasks.length > 0) {
+    while (currentTime < afternoonSlotStart && remainingAnytimeTasks.length > 0) {
+      const spreadSlot = shouldInsertSpreadTask();
+      if (spreadSlot) {
+        insertSpreadTask(spreadSlot);
+        continue;
+      }
+      const task = remainingAnytimeTasks.shift()!;
+      addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
+    }
+  }
+
+  // Schedule afternoon core tasks
+  for (const task of afternoonTasks) {
+    let spreadSlot = shouldInsertSpreadTask();
+    while (spreadSlot && currentTime < endTime) {
+      insertSpreadTask(spreadSlot);
+      spreadSlot = shouldInsertSpreadTask();
+    }
+    addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
+  }
+
+  // Add remaining anytime core tasks
+  for (const task of remainingAnytimeTasks) {
+    let spreadSlot = shouldInsertSpreadTask();
+    while (spreadSlot && currentTime < endTime) {
+      insertSpreadTask(spreadSlot);
+      spreadSlot = shouldInsertSpreadTask();
+    }
+    addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
+  }
+
+  // Fill remaining time with todos
+  const remainingTodos = sortTodosByTimeframe(
+    eligibleTodos.filter((t) => !scheduledTodoIds.has(t.id))
+  );
+  for (const todo of remainingTodos) {
+    if (currentTime >= endTime) break;
+
+    let spreadSlot = shouldInsertSpreadTask();
+    while (spreadSlot && currentTime < endTime) {
+      insertSpreadTask(spreadSlot);
+      spreadSlot = shouldInsertSpreadTask();
+    }
+
+    if (currentTime >= endTime) break;
+
+    const timeframe = todo.timeframe || 'this_week';
+    addTask(
+      todo.id,
+      'todo',
+      todo.title,
+      todo.duration,
+      timeframe,
+      TIMEFRAME_CONFIG[timeframe].color
+    );
+  }
+
+  // Insert any remaining spread tasks
+  while (spreadSlotIndex < spreadSlots.length && currentTime < endTime) {
+    const slot = spreadSlots[spreadSlotIndex];
+    const times = slot.task.timesPerDay || 1;
+    const title = times > 1
+      ? `${slot.task.title} (${slot.instanceNumber}/${times})`
+      : slot.task.title;
+    addTask(slot.task.id, 'core', title, slot.task.duration, undefined, slot.task.color || '#6366f1');
+    spreadSlotIndex++;
+  }
+
+  return schedule;
 }

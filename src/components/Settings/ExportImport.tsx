@@ -205,9 +205,15 @@ export function ExportImport() {
         }}
       >
         <AlertTriangle style={{ color: 'var(--status-warning)' }} className="shrink-0 mt-0.5" size={16} />
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Data is stored in your browser. Export backups regularly.
-        </p>
+        <div style={{ color: 'var(--text-secondary)' }}>
+          <p className="mb-1">
+            <strong style={{ color: 'var(--text-primary)' }}>Data is stored locally in your browser.</strong>
+          </p>
+          <p>
+            Your data will be lost if you clear your browser's cache, cookies, site data, or browsing history.
+            Using incognito/private mode will also not save your data. Export backups regularly to avoid losing your tasks.
+          </p>
+        </div>
       </div>
     </div>
   );

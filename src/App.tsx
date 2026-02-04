@@ -350,7 +350,7 @@ function App() {
                           })()}
                         </h2>
                         <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-                          {coreTasks.length} core tasks, {todos.filter((t) => !t.completed).length} todos
+                          {todaySchedule.filter((t) => t.sourceType === 'core').length} core tasks, {todaySchedule.filter((t) => t.sourceType === 'todo').length} todos
                         </p>
 
                         {/* Dashboard Metrics */}
@@ -377,7 +377,7 @@ function App() {
                             />
                             <div className="flex items-center justify-between mt-2">
                               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                {Math.round(scheduledPercentage)}% of day
+                                {Math.round(scheduledPercentage)}% filled
                               </span>
                               {estimatedEndTime && (
                                 <span className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
