@@ -1,9 +1,41 @@
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Clock, Pencil, Trash2, Check, RotateCcw, StickyNote } from 'lucide-react';
+import { Clock, Pencil, Trash2, RotateCcw, StickyNote } from 'lucide-react';
 import type { CoreTask, TodoItem } from '../../types';
 import { TIMEFRAME_CONFIG } from '../../types';
+import { celebrate } from '../../utils/celebrations';
+
+// Animated checkmark that draws itself
+function AnimatedCheckmark({ isCompleted }: { isCompleted: boolean }) {
+  return (
+    <motion.svg
+      viewBox="0 0 24 24"
+      width={12}
+      height={12}
+      style={{ overflow: 'visible' }}
+    >
+      <motion.path
+        d="M4 12l6 6L20 6"
+        fill="none"
+        stroke="white"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{
+          pathLength: isCompleted ? 1 : 0,
+          opacity: isCompleted ? 1 : 0,
+        }}
+        transition={{
+          pathLength: { type: 'spring', stiffness: 300, damping: 20, duration: 0.4 },
+          opacity: { duration: 0.1 },
+        }}
+      />
+    </motion.svg>
+  );
+}
 
 interface CoreTaskCardProps {
   task: CoreTask;
@@ -133,36 +165,67 @@ export function TaskCard(props: TaskCardProps) {
     );
   }
 
+  const checkboxRef = useRef<HTMLButtonElement>(null);
+  const wasCompleted = useRef(todoTask?.completed);
+
+  // Handle completion with celebrations
+  const handleToggleComplete = () => {
+    const isCompletingNow = !todoTask?.completed;
+
+    if (isCompletingNow) {
+      celebrate({ element: checkboxRef.current });
+    }
+
+    wasCompleted.current = todoTask?.completed;
+    (props as TodoCardProps).onToggleComplete();
+  };
+
   // Todo card with Framer Motion animations
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        boxShadow: todoTask?.completed && !wasCompleted.current
+          ? ['0 0 0 rgba(34, 197, 94, 0)', '0 0 20px rgba(34, 197, 94, 0.4)', '0 0 0 rgba(34, 197, 94, 0)']
+          : '0 0 0 rgba(34, 197, 94, 0)',
+      }}
       exit={{ opacity: 0, x: -100 }}
-      className="px-3 py-2 transition-colors"
+      transition={{
+        boxShadow: { duration: 0.6, times: [0, 0.3, 1] },
+      }}
+      className="px-3 py-2"
       style={{
-        background: 'var(--bg-card)',
+        background: todoTask?.completed ? 'rgba(34, 197, 94, 0.05)' : 'var(--bg-card)',
         borderRadius: 'var(--border-radius-md)',
-        border: '1px solid var(--border-primary)',
-        opacity: todoTask?.completed ? 0.6 : 1,
+        border: todoTask?.completed ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid var(--border-primary)',
+        opacity: todoTask?.completed ? 0.7 : 1,
       }}
     >
       <div className="flex items-start gap-2">
-        <button
-          onClick={(props as TodoCardProps).onToggleComplete}
-          className="mt-0.5 w-4 h-4 flex items-center justify-center transition-colors"
+        <motion.button
+          ref={checkboxRef}
+          onClick={handleToggleComplete}
+          whileTap={{ scale: 0.85 }}
+          animate={{
+            scale: todoTask?.completed ? [1, 1.3, 1] : 1,
+          }}
+          transition={{
+            scale: { type: 'spring', stiffness: 400, damping: 10, duration: 0.3 },
+          }}
+          className="mt-0.5 w-4 h-4 flex items-center justify-center"
           style={{
             borderRadius: 'var(--border-radius-sm)',
             border: todoTask?.completed
               ? '2px solid var(--status-success)'
               : '2px solid var(--text-muted)',
             background: todoTask?.completed ? 'var(--status-success)' : 'transparent',
-            color: '#ffffff',
           }}
         >
-          {todoTask?.completed && <Check size={12} />}
-        </button>
+          <AnimatedCheckmark isCompleted={!!todoTask?.completed} />
+        </motion.button>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

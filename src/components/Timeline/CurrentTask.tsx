@@ -6,6 +6,7 @@ import { TIMEFRAME_CONFIG } from '../../types';
 import { Button } from '../common/Button';
 import { ProgressBar } from '../common/ProgressBar';
 import { differenceInSeconds, parseISO } from 'date-fns';
+import { celebrate } from '../../utils/celebrations';
 
 interface CurrentTaskProps {
   task: ScheduledTask | null;
@@ -20,6 +21,12 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
   const [showPostpone, setShowPostpone] = useState(false);
   const [postponeTimeframe, setPostponeTimeframe] = useState<Timeframe>('tomorrow');
   const [postponeNotes, setPostponeNotes] = useState('');
+  const doneButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handleComplete = () => {
+    celebrate({ element: doneButtonRef.current });
+    onComplete();
+  };
 
   useEffect(() => {
     if (!task || task.status !== 'active' || isPaused) return;
@@ -190,9 +197,10 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
       {/* Actions */}
       <div className={`grid gap-2 ${isTodo && onPostpone ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <Button
+          ref={doneButtonRef}
           variant="success"
           size="sm"
-          onClick={onComplete}
+          onClick={handleComplete}
           className="flex items-center justify-center gap-1"
         >
           <Check size={16} />
