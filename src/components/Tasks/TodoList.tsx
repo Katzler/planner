@@ -171,7 +171,7 @@ export function TodoList() {
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <AnimatePresence>
             {filteredTodos.map((todo) => (
               <TaskCard

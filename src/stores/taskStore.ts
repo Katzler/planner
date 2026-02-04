@@ -10,6 +10,7 @@ interface TaskState {
   addCoreTask: (task: Omit<CoreTask, 'id'>) => void;
   updateCoreTask: (id: string, updates: Partial<CoreTask>) => void;
   deleteCoreTask: (id: string) => void;
+  reorderCoreTasks: (activeId: string, overId: string) => void;
 
   // Todo Actions
   addTodo: (todo: Omit<TodoItem, 'id' | 'createdAt' | 'completed'>) => void;
@@ -45,6 +46,20 @@ export const useTaskStore = create<TaskState>()(
         set((state) => ({
           coreTasks: state.coreTasks.filter((task) => task.id !== id),
         })),
+
+      reorderCoreTasks: (activeId, overId) =>
+        set((state) => {
+          const oldIndex = state.coreTasks.findIndex((t) => t.id === activeId);
+          const newIndex = state.coreTasks.findIndex((t) => t.id === overId);
+
+          if (oldIndex === -1 || newIndex === -1) return state;
+
+          const newTasks = [...state.coreTasks];
+          const [removed] = newTasks.splice(oldIndex, 1);
+          newTasks.splice(newIndex, 0, removed);
+
+          return { coreTasks: newTasks };
+        }),
 
       addTodo: (todo) =>
         set((state) => ({

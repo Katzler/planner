@@ -1,5 +1,19 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { Plus, Target } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
@@ -11,13 +25,32 @@ import type { CoreTask } from '../../types';
 import toast from 'react-hot-toast';
 
 export function CoreTaskList() {
-  const { coreTasks, addCoreTask, updateCoreTask, deleteCoreTask } = useTaskStore();
+  const { coreTasks, addCoreTask, updateCoreTask, deleteCoreTask, reorderCoreTasks } = useTaskStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<CoreTask | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; taskId: string | null }>({
     isOpen: false,
     taskId: null,
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      reorderCoreTasks(active.id as string, over.id as string);
+    }
+  };
 
   const handleSubmit = (data: Omit<CoreTask, 'id'>) => {
     if (editingTask) {
@@ -103,19 +136,35 @@ export function CoreTaskList() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
-          <AnimatePresence>
-            {coreTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                type="core"
-                task={task}
-                onEdit={() => handleEdit(task)}
-                onDelete={() => handleDelete(task.id)}
-              />
-            ))}
-          </AnimatePresence>
-        </div>
+        <>
+          <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+            Drag to reorder • Tasks at top are scheduled first
+          </p>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={coreTasks.map((t) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-1.5">
+                <AnimatePresence>
+                  {coreTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      type="core"
+                      task={task}
+                      onEdit={() => handleEdit(task)}
+                      onDelete={() => handleDelete(task.id)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            </SortableContext>
+          </DndContext>
+        </>
       )}
 
       <Modal

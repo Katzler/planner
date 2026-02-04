@@ -28,6 +28,18 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Sat' },
 ];
 
+const DURATION_OPTIONS = [
+  { value: 10, label: '10 mins' },
+  { value: 15, label: '15 mins' },
+  { value: 30, label: '30 mins' },
+  { value: 45, label: '45 mins' },
+  { value: 60, label: '1 hour' },
+  { value: 90, label: '1.5 hours' },
+  { value: 120, label: '2 hours' },
+  { value: 240, label: 'Half day (4h)' },
+  { value: 480, label: 'Full day (8h)' },
+];
+
 const inputStyle = {
   width: '100%',
   background: 'var(--bg-input)',
@@ -150,18 +162,20 @@ export function TaskForm(props: TaskFormProps) {
             className="block text-sm font-medium mb-1"
             style={{ color: 'var(--text-secondary)' }}
           >
-            Duration (minutes)
+            Duration
           </label>
-          <input
-            type="number"
+          <select
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
-            min={5}
-            step={5}
-            required
             style={inputStyle}
             className="focus:outline-none focus:ring-2"
-          />
+          >
+            {DURATION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {mode === 'todo' && (
