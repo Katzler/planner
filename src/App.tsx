@@ -198,7 +198,7 @@ function App() {
         }}
       />
 
-      {/* Header */}
+      {/* Header with Navigation */}
       <header
         className="sticky top-0 z-30"
         style={{
@@ -207,45 +207,49 @@ function App() {
           backdropFilter: 'var(--backdrop-blur)',
         }}
       >
-        <div className="max-w-6xl mx-auto px-4 py-3">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          {/* Logo */}
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Planner
           </h1>
+
+          {/* Navigation Tabs */}
+          <nav className="flex items-center gap-1">
+            {navItems.slice(0, 3).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="flex items-center gap-2 px-4 py-1.5 transition-all"
+                style={{
+                  borderRadius: '9999px',
+                  background: activeTab === item.id ? 'var(--accent-primary)' : 'transparent',
+                  color: activeTab === item.id ? '#ffffff' : 'var(--text-secondary)',
+                }}
+              >
+                <item.icon size={16} />
+                <span className="text-sm font-medium">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Settings Button */}
+          <button
+            onClick={() => setActiveTab('settings')}
+            className="p-2 transition-all"
+            style={{
+              borderRadius: '9999px',
+              background: activeTab === 'settings' ? 'var(--accent-primary)' : 'transparent',
+              color: activeTab === 'settings' ? '#ffffff' : 'var(--text-secondary)',
+            }}
+          >
+            <Settings size={20} />
+          </button>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          {/* Sidebar Navigation */}
-          <nav className="w-48 shrink-0">
-            <div
-              className="p-2 sticky top-20"
-              style={{
-                background: 'var(--bg-secondary)',
-                borderRadius: 'var(--border-radius-lg)',
-                border: '1px solid var(--border-primary)',
-              }}
-            >
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 transition-colors"
-                  style={{
-                    borderRadius: 'var(--border-radius-md)',
-                    background: activeTab === item.id ? 'var(--accent-primary)' : 'transparent',
-                    color: activeTab === item.id ? '#ffffff' : 'var(--text-secondary)',
-                  }}
-                >
-                  <item.icon size={18} />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </nav>
-
-          {/* Main Content */}
-          <main className="flex-1 min-w-0">
+        {/* Main Content */}
+        <main>
             <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && (
                 <motion.div
@@ -364,7 +368,6 @@ function App() {
               )}
             </AnimatePresence>
           </main>
-        </div>
       </div>
     </div>
   );
