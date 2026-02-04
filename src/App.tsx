@@ -22,6 +22,7 @@ import { ThemeSelector } from './components/Settings/ThemeSelector';
 import { Button } from './components/common/Button';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { ProgressBar } from './components/common/ProgressBar';
+import { MusicPlayer } from './components/common/MusicPlayer';
 
 // Stores
 import { useTaskStore } from './stores/taskStore';
@@ -293,8 +294,12 @@ function App() {
             ))}
           </nav>
 
-          {/* Settings Button */}
-          <button
+          {/* Right side: Music Player + Settings */}
+          <div className="flex items-center gap-2">
+            <MusicPlayer />
+
+            {/* Settings Button */}
+            <button
             onClick={() => setActiveTab('settings')}
             className="p-2 transition-all"
             style={{
@@ -305,6 +310,7 @@ function App() {
           >
             <Settings size={20} />
           </button>
+          </div>
         </div>
       </header>
 
