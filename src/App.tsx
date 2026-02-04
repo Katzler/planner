@@ -271,9 +271,13 @@ function App() {
       >
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           {/* Logo */}
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className="text-xl font-bold hover:opacity-80 transition-opacity"
+            style={{ color: 'var(--text-primary)' }}
+          >
             Planner
-          </h1>
+          </button>
 
           {/* Navigation Tabs */}
           <nav className="flex items-center gap-1">
