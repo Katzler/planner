@@ -1,0 +1,234 @@
+/* Theme CSS Variables */
+/* Refined Startup and Glassmorphism themes */
+
+/* ==================== STARTUP THEME ==================== */
+/* Vercel/Stripe inspired - sleek, minimal, professional */
+[data-theme="startup"] {
+  /* Backgrounds - true blacks with subtle layering */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-card: rgba(17, 17, 17, 0.8);
+  --bg-input: rgba(38, 38, 38, 0.6);
+  --bg-hover: rgba(38, 38, 38, 0.8);
+
+  /* Text - crisp whites with good hierarchy */
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1a1;
+  --text-muted: #666666;
+
+  /* Borders - subtle, refined */
+  --border-primary: rgba(255, 255, 255, 0.08);
+  --border-secondary: rgba(255, 255, 255, 0.12);
+
+  /* Accent - vibrant gradient-inspired purple/cyan */
+  --accent-primary: #a855f7;
+  --accent-secondary: #22d3ee;
+  --accent-hover: #9333ea;
+  --accent-bg: rgba(168, 85, 247, 0.12);
+
+  /* Gradient accent for special elements */
+  --accent-gradient: linear-gradient(135deg, #a855f7 0%, #22d3ee 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #9333ea 0%, #06b6d4 100%);
+
+  /* Status colors - vibrant but refined */
+  --status-success: #22c55e;
+  --status-success-bg: rgba(34, 197, 94, 0.12);
+  --status-danger: #ef4444;
+  --status-danger-bg: rgba(239, 68, 68, 0.12);
+  --status-warning: #eab308;
+  --status-warning-bg: rgba(234, 179, 8, 0.12);
+
+  /* Special effects */
+  --border-radius-sm: 0.5rem;
+  --border-radius-md: 0.75rem;
+  --border-radius-lg: 1rem;
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  --backdrop-blur: blur(12px);
+
+  /* Glow effects for focus states and accents */
+  --glow-primary: 0 0 30px rgba(168, 85, 247, 0.4);
+  --glow-secondary: 0 0 30px rgba(34, 211, 238, 0.4);
+  --glow-success: 0 0 20px rgba(34, 197, 94, 0.4);
+
+  /* Active indicator */
+  --active-indicator: var(--accent-primary);
+}
+
+/* Startup theme refinements */
+[data-theme="startup"] body {
+  background: #000000;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168, 85, 247, 0.15), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(34, 211, 238, 0.1), transparent);
+  background-attachment: fixed;
+}
+
+/* Subtle grid pattern overlay for startup */
+[data-theme="startup"]::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ==================== GLASSMORPHISM THEME ==================== */
+/* Frosted glass over vibrant animated gradients */
+[data-theme="glass"] {
+  /* Backgrounds - translucent layers */
+  --bg-primary: transparent;
+  --bg-secondary: rgba(255, 255, 255, 0.05);
+  --bg-card: rgba(255, 255, 255, 0.1);
+  --bg-input: rgba(255, 255, 255, 0.15);
+  --bg-hover: rgba(255, 255, 255, 0.2);
+
+  /* Text - bright whites for contrast */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  --text-muted: rgba(255, 255, 255, 0.6);
+
+  /* Borders - glassy edges */
+  --border-primary: rgba(255, 255, 255, 0.15);
+  --border-secondary: rgba(255, 255, 255, 0.25);
+
+  /* Accent - dynamic based on time of day (set by useSunPosition hook) */
+  --accent-primary: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-bg: rgba(245, 158, 11, 0.2);
+
+  /* Status colors - slightly muted to work with bg */
+  --status-success: #4ade80;
+  --status-success-bg: rgba(74, 222, 128, 0.2);
+  --status-danger: #fb7185;
+  --status-danger-bg: rgba(251, 113, 133, 0.2);
+  --status-warning: #fbbf24;
+  --status-warning-bg: rgba(251, 191, 36, 0.2);
+
+  /* Special effects */
+  --border-radius-sm: 1rem;
+  --border-radius-md: 1.25rem;
+  --border-radius-lg: 1.5rem;
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 25px 50px rgba(0, 0, 0, 0.2);
+  --backdrop-blur: blur(20px) saturate(180%);
+
+  /* Glow effects */
+  --glow-primary: 0 0 40px rgba(255, 255, 255, 0.3);
+  --glow-success: 0 0 20px rgba(74, 222, 128, 0.4);
+}
+
+/* Glassmorphism animated gradient background */
+[data-theme="glass"] body {
+  background: linear-gradient(-45deg,
+    #0f0c29,
+    #302b63,
+    #24243e,
+    #0f0c29
+  );
+  background-size: 400% 400%;
+  animation: glassGradient 1800s ease infinite;
+  min-height: 100vh;
+}
+
+@keyframes glassGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Sun/Moon orb - position and color set via CSS variables from useSunPosition hook */
+[data-theme="glass"] {
+  /* Default sun position (will be overridden by JS) */
+  --sun-x: 85%;
+  --sun-y: 15%;
+  --sun-color: #cbd5e1;
+  --sun-glow: rgba(148, 163, 184, 0.4);
+  --sun-scale: 1;
+}
+
+/* The sun/moon light source */
+[data-theme="glass"]::before {
+  content: '';
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  /* Position based on time of day */
+  left: var(--sun-x);
+  top: var(--sun-y);
+  transform: translate(-50%, -50%) scale(var(--sun-scale));
+  /* Color based on time of day */
+  background: radial-gradient(circle, var(--sun-color) 0%, transparent 70%);
+  box-shadow: 0 0 120px 60px var(--sun-glow);
+  filter: blur(40px);
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 0;
+  /* Smooth transition as position/color updates */
+  transition: left 60s linear, top 60s linear, background 120s ease, box-shadow 120s ease;
+}
+
+/* Subtle ambient glow at bottom - provides depth */
+[data-theme="glass"]::after {
+  content: '';
+  position: fixed;
+  width: 600px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  bottom: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: blur(60px);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ==================== SHARED UTILITIES ==================== */
+
+/* Gradient text utility */
+.text-gradient {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow on hover for cards */
+[data-theme="startup"] .card-glow:hover {
+  box-shadow: var(--glow-primary);
+}
+
+[data-theme="glass"] .card-glow:hover {
+  box-shadow: var(--glow-primary);
+}
+
+/* Glass card effect */
+[data-theme="glass"] .glass-card {
+  background: var(--bg-card);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid var(--border-primary);
+}
+
+/* Startup card with subtle border glow */
+[data-theme="startup"] .startup-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow);
+}
+
+[data-theme="startup"] .startup-card:hover {
+  border-color: var(--border-secondary);
+}
