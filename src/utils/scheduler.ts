@@ -19,7 +19,7 @@ import {
   isWithinInterval,
 } from 'date-fns';
 
-const generateId = () => Math.random().toString(36).substring(2, 9);
+const generateId = () => crypto.randomUUID().split('-')[0];
 
 // Check if a core task should run today
 function shouldCoreTaskRunToday(task: CoreTask): boolean {
@@ -166,7 +166,11 @@ function getSpreadSlots(
   const totalMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
   const slots: Date[] = [];
 
-  if (timesPerDay <= 1) {
+  if (timesPerDay < 1) {
+    return slots;
+  }
+
+  if (timesPerDay === 1) {
     slots.push(startTime);
     return slots;
   }
@@ -212,7 +216,10 @@ export function generateDailySchedule(
   const morningTasks = regularTasks.filter((t) => t.preferredTime === 'morning');
   const middayTasks = regularTasks.filter((t) => t.preferredTime === 'midday');
   const afternoonTasks = regularTasks.filter((t) => t.preferredTime === 'afternoon');
-  const anytimeTasks = regularTasks.filter((t) => t.preferredTime === 'anytime');
+  const remainingAnytimeTasks = [...regularTasks.filter((t) => t.preferredTime === 'anytime')];
+
+  // Track scheduled todo IDs to avoid duplicates
+  const scheduledTodoIds = new Set<string>();
 
   // Pre-calculate spread task slots and create placeholder entries
   interface SpreadSlot {
@@ -318,16 +325,18 @@ export function generateDailySchedule(
 
   // Fill with "today" todos in morning slot (most urgent)
   const morningSlotEnd = getTimeSlot('morning', startTime, endTime).end;
-  let todoIndex = 0;
-  while (currentTime < morningSlotEnd && todoIndex < eligibleTodos.length) {
+  for (const todo of eligibleTodos) {
+    if (currentTime >= morningSlotEnd) break;
+    if (scheduledTodoIds.has(todo.id)) continue;
+
     // Check if spread task should come first
     const spreadSlot = shouldInsertSpreadTask();
     if (spreadSlot) {
       insertSpreadTask(spreadSlot);
-      continue; // Re-check time after inserting spread task
     }
 
-    const todo = eligibleTodos[todoIndex];
+    if (currentTime >= morningSlotEnd) break;
+
     const timeframe = todo.timeframe || 'this_week';
     if (timeframe === 'today') {
       addTask(
@@ -338,9 +347,7 @@ export function generateDailySchedule(
         timeframe,
         TIMEFRAME_CONFIG[timeframe].color
       );
-      eligibleTodos.splice(todoIndex, 1);
-    } else {
-      todoIndex++;
+      scheduledTodoIds.add(todo.id);
     }
   }
 
@@ -348,14 +355,14 @@ export function generateDailySchedule(
   const middaySlotStart = getTimeSlot('midday', startTime, endTime).start;
   if (currentTime < middaySlotStart && middayTasks.length > 0) {
     // Fill gap with anytime tasks or todos
-    while (currentTime < middaySlotStart && anytimeTasks.length > 0) {
+    while (currentTime < middaySlotStart && remainingAnytimeTasks.length > 0) {
       // Check if spread task should come first
       const spreadSlot = shouldInsertSpreadTask();
       if (spreadSlot) {
         insertSpreadTask(spreadSlot);
         continue;
       }
-      const task = anytimeTasks.shift()!;
+      const task = remainingAnytimeTasks.shift()!;
       addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
     }
   }
@@ -375,14 +382,14 @@ export function generateDailySchedule(
   const afternoonSlotStart = getTimeSlot('afternoon', startTime, endTime).start;
   if (currentTime < afternoonSlotStart && afternoonTasks.length > 0) {
     // Fill gap with remaining anytime tasks
-    while (currentTime < afternoonSlotStart && anytimeTasks.length > 0) {
+    while (currentTime < afternoonSlotStart && remainingAnytimeTasks.length > 0) {
       // Check if spread task should come first
       const spreadSlot = shouldInsertSpreadTask();
       if (spreadSlot) {
         insertSpreadTask(spreadSlot);
         continue;
       }
-      const task = anytimeTasks.shift()!;
+      const task = remainingAnytimeTasks.shift()!;
       addTask(task.id, 'core', task.title, task.duration, undefined, task.color || '#6366f1');
     }
   }
@@ -399,7 +406,7 @@ export function generateDailySchedule(
   }
 
   // Add remaining anytime core tasks
-  for (const task of anytimeTasks) {
+  for (const task of remainingAnytimeTasks) {
     // Check if spread task should come first - insert ALL pending spread tasks
     let spreadSlot = shouldInsertSpreadTask();
     while (spreadSlot && currentTime < endTime) {
@@ -410,7 +417,9 @@ export function generateDailySchedule(
   }
 
   // Fill remaining time with todos by timeframe urgency
-  const remainingTodos = sortTodosByTimeframe(eligibleTodos);
+  const remainingTodos = sortTodosByTimeframe(
+    eligibleTodos.filter((t) => !scheduledTodoIds.has(t.id))
+  );
   for (const todo of remainingTodos) {
     if (currentTime >= endTime) break;
 

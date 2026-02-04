@@ -21,7 +21,7 @@ interface ScheduleState {
   setTodaySchedule: (tasks: ScheduledTask[]) => void;
   updateScheduledTask: (id: string, updates: Partial<ScheduledTask>) => void;
   setActiveTask: (id: string | null) => void;
-  completeTask: (id: string, early?: boolean) => { completed: ScheduledTask; nextTask: ScheduledTask | null };
+  completeTask: (id: string) => { completed: ScheduledTask | null; nextTask: ScheduledTask | null };
   skipTask: (id: string) => void;
   extendTask: (id: string, minutes: number) => void;
   reorderSchedule: (activeId: string, overId: string) => void;
@@ -63,12 +63,12 @@ export const useScheduleStore = create<ScheduleState>()(
       setActiveTask: (id) =>
         set({ activeTaskId: id }),
 
-      completeTask: (id, _early = false) => {
+      completeTask: (id) => {
         const state = get();
         const taskIndex = state.todaySchedule.findIndex((t) => t.id === id);
         const task = state.todaySchedule[taskIndex];
 
-        if (!task) return { completed: null as any, nextTask: null };
+        if (!task) return { completed: null, nextTask: null };
 
         const completedTask = {
           ...task,

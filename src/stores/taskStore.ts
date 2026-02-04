@@ -21,7 +21,7 @@ interface TaskState {
   clearCompletedTodos: () => void;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 9);
+const generateId = () => crypto.randomUUID().split('-')[0];
 
 export const useTaskStore = create<TaskState>()(
   persist(

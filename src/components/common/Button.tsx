@@ -1,7 +1,7 @@
-import { forwardRef, type ButtonHTMLAttributes, type CSSProperties } from 'react';
-import { motion } from 'framer-motion';
+import { forwardRef, type CSSProperties } from 'react';
+import { motion, type HTMLMotionProps } from 'framer-motion';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends HTMLMotionProps<'button'> {
   variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
 }
@@ -72,7 +72,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           borderRadius: 'var(--border-radius-md)',
           ...style,
         }}
-        {...(props as any)}
+        {...props}
       >
         {children}
       </motion.button>

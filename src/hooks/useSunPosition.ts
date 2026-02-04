@@ -41,7 +41,6 @@ function getCurrentHour(): number {
  */
 function calculateSunPosition(hour: number): SunPosition {
   const DAWN = 5;      // 5am - sun starts rising
-  const NOON = 12;     // 12pm - sun at peak
   const SUNSET = 19;   // 7pm - sun sets
 
   // Determine if it's daytime

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Clock, Pause, Play, CalendarClock, X } from 'lucide-react';
 import type { ScheduledTask, Timeframe } from '../../types';
@@ -54,12 +54,19 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
     }
   };
 
-  useEffect(() => {
-    if (!isPaused || !task) return;
+  const pauseActiveRef = useRef(false);
 
+  useEffect(() => {
+    if (!isPaused || !task) {
+      pauseActiveRef.current = false;
+      return;
+    }
+
+    pauseActiveRef.current = true;
     const pauseStart = Date.now();
 
     return () => {
+      if (!pauseActiveRef.current) return;
       const pauseDuration = Math.floor((Date.now() - pauseStart) / 1000);
       setPausedElapsed((prev) => prev + pauseDuration);
     };

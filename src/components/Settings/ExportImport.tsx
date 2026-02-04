@@ -23,31 +23,35 @@ export function ExportImport() {
   const scheduleStore = useScheduleStore();
 
   const handleExport = () => {
-    const data: ExportData = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      tasks: {
-        coreTasks: taskStore.coreTasks,
-        todos: taskStore.todos,
-      },
-      schedule: {
-        weekSchedule: scheduleStore.weekSchedule,
-      },
-    };
+    try {
+      const data: ExportData = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        tasks: {
+          coreTasks: taskStore.coreTasks,
+          todos: taskStore.todos,
+        },
+        schedule: {
+          weekSchedule: scheduleStore.weekSchedule,
+        },
+      };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `daily-planner-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `planner-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-    toast.success('Data exported');
+      toast.success('Data exported');
+    } catch {
+      toast.error('Failed to export data. Please try again.');
+    }
   };
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,12 +59,30 @@ export function ExportImport() {
     if (!file) return;
 
     const reader = new FileReader();
+
+    reader.onerror = () => {
+      toast.error('Failed to read file. Please try again.');
+    };
+
     reader.onload = (e) => {
       try {
-        const data: ExportData = JSON.parse(e.target?.result as string);
+        const result = e.target?.result;
+        if (typeof result !== 'string') {
+          toast.error('Failed to read file contents.');
+          return;
+        }
+
+        let data: ExportData;
+        try {
+          data = JSON.parse(result);
+        } catch {
+          toast.error('Invalid file format. Expected a JSON file.');
+          return;
+        }
 
         if (!data.version || !data.tasks || !data.schedule) {
-          throw new Error('Invalid backup file format');
+          toast.error('Invalid backup file. Missing required fields.');
+          return;
         }
 
         // Import tasks
@@ -86,9 +108,8 @@ export function ExportImport() {
         }
 
         toast.success('Data imported');
-      } catch (error) {
-        console.error('Import error:', error);
-        toast.error('Failed to import. Invalid file.');
+      } catch {
+        toast.error('An unexpected error occurred during import.');
       }
     };
 
