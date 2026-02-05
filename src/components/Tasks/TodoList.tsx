@@ -7,7 +7,7 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { TaskForm } from './TaskForm';
 import { TaskCard } from './TaskCard';
 import { useTaskStore } from '../../stores/taskStore';
-import type { TodoItem } from '../../types';
+import type { TodoItem, Timeframe } from '../../types';
 import toast from 'react-hot-toast';
 
 export function TodoList() {
@@ -28,11 +28,20 @@ export function TodoList() {
   });
   const [clearConfirm, setClearConfirm] = useState(false);
 
-  const filteredTodos = todos.filter((todo) => {
-    if (filter === 'active') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
-    return true;
-  });
+  const TIMEFRAME_ORDER: Timeframe[] = ['today', 'tomorrow', 'this_week', 'next_week', 'this_month', 'someday'];
+
+  const filteredTodos = todos
+    .filter((todo) => {
+      if (filter === 'active') return !todo.completed;
+      if (filter === 'completed') return todo.completed;
+      return true;
+    })
+    .sort((a, b) => {
+      // Completed items always go to the bottom
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      // Sort by timeframe proximity
+      return TIMEFRAME_ORDER.indexOf(a.timeframe) - TIMEFRAME_ORDER.indexOf(b.timeframe);
+    });
 
   const completedCount = todos.filter((t) => t.completed).length;
 
