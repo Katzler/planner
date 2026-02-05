@@ -1,7 +1,6 @@
 import { forwardRef, type CSSProperties } from 'react';
-import { motion, type HTMLMotionProps } from 'framer-motion';
 
-interface ButtonProps extends HTMLMotionProps<'button'> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
 }
@@ -55,14 +54,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const variantStyles = getVariantStyles(variant);
 
     return (
-      <motion.button
+      <button
         ref={ref}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
         className={`
           ${sizes[size]}
-          font-medium transition-all
+          font-medium transition-all duration-150
+          hover:scale-[1.02] active:scale-[0.98]
           disabled:opacity-50 disabled:cursor-not-allowed
+          disabled:hover:scale-100 disabled:active:scale-100
           focus:outline-none focus:ring-2 focus:ring-offset-2
           inline-flex items-center justify-center
           ${className}
@@ -75,7 +74,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {children}
-      </motion.button>
+      </button>
     );
   }
 );

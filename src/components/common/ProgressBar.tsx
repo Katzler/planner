@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 interface ProgressBarProps {
   progress: number;
   color?: string;
@@ -14,7 +12,6 @@ export function ProgressBar({
   color,
   height = 8,
   showLabel = false,
-  animated = true,
   label = 'Progress',
 }: ProgressBarProps) {
   const clampedProgress = Math.min(100, Math.max(0, progress));
@@ -34,12 +31,11 @@ export function ProgressBar({
           borderRadius: 'var(--border-radius-sm)',
         }}
       >
-        <motion.div
-          initial={animated ? { width: 0 } : false}
-          animate={{ width: `${clampedProgress}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+        <div
           className="h-full"
           style={{
+            width: `${clampedProgress}%`,
+            transition: 'width 0.5s ease-out',
             backgroundColor: color || 'var(--accent-primary)',
             borderRadius: 'var(--border-radius-sm)',
           }}

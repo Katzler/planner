@@ -183,7 +183,6 @@ export function TaskCard(props: TaskCardProps) {
   // Todo card with Framer Motion animations
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, y: 10 }}
       animate={{
         opacity: 1,
