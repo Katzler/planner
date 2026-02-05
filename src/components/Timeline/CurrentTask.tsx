@@ -15,6 +15,7 @@ interface CurrentTaskProps {
 }
 
 export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) {
+  const [timerStarted, setTimerStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [pausedElapsed, setPausedElapsed] = useState(0);
@@ -22,6 +23,7 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
   const [postponeTimeframe, setPostponeTimeframe] = useState<string>('later_today');
   const [postponeNotes, setPostponeNotes] = useState('');
   const doneButtonRef = useRef<HTMLButtonElement>(null);
+  const timerStartTimeRef = useRef<Date | null>(null);
 
   const handleComplete = () => {
     celebrate({ element: doneButtonRef.current });
@@ -29,11 +31,13 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
   };
 
   useEffect(() => {
-    if (!task || task.status !== 'active' || isPaused) return;
+    if (!task || task.status !== 'active' || !timerStarted || isPaused) return;
 
-    const startTime = task.actualStart
-      ? parseISO(task.actualStart)
-      : parseISO(task.scheduledStart);
+    if (!timerStartTimeRef.current) {
+      timerStartTimeRef.current = new Date();
+    }
+
+    const startTime = timerStartTimeRef.current;
 
     const interval = setInterval(() => {
       const now = new Date();
@@ -42,19 +46,24 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [task, isPaused, pausedElapsed]);
+  }, [task, timerStarted, isPaused, pausedElapsed]);
 
   useEffect(() => {
+    setTimerStarted(false);
     setElapsedSeconds(0);
     setIsPaused(false);
     setPausedElapsed(0);
     setShowPostpone(false);
     setPostponeNotes('');
     setPostponeTimeframe('later_today');
+    timerStartTimeRef.current = null;
   }, [task?.id]);
 
-  const handlePauseToggle = () => {
-    if (isPaused) {
+  const handleTimerToggle = () => {
+    if (!timerStarted) {
+      setTimerStarted(true);
+      setIsPaused(false);
+    } else if (isPaused) {
       setIsPaused(false);
     } else {
       setIsPaused(true);
@@ -238,25 +247,32 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
         <div
           className="text-4xl font-mono font-bold mb-1"
           style={{
-            color: isPaused
+            color: !timerStarted
+              ? 'var(--text-secondary)'
+              : isPaused
               ? 'var(--status-warning)'
               : isOvertime
               ? 'var(--status-danger)'
               : 'var(--text-primary)',
           }}
         >
-          {isOvertime ? '-' : ''}
-          {formatTime(isOvertime ? elapsedSeconds - totalSeconds : remainingSeconds)}
+          {!timerStarted
+            ? formatTime(totalSeconds)
+            : <>
+                {isOvertime ? '-' : ''}
+                {formatTime(isOvertime ? elapsedSeconds - totalSeconds : remainingSeconds)}
+              </>
+          }
         </div>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {isPaused ? 'paused' : isOvertime ? 'overtime' : 'remaining'}
+          {!timerStarted ? 'ready' : isPaused ? 'paused' : isOvertime ? 'overtime' : 'remaining'}
         </p>
       </div>
 
       {/* Progress Bar */}
       <div className="mb-5">
         <ProgressBar
-          progress={progress}
+          progress={timerStarted ? progress : 0}
           color={isOvertime ? 'var(--status-danger)' : taskColor}
           height={6}
         />
@@ -276,13 +292,13 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
         </Button>
 
         <Button
-          variant={isPaused ? 'primary' : 'secondary'}
+          variant={!timerStarted || isPaused ? 'primary' : 'secondary'}
           size="sm"
-          onClick={handlePauseToggle}
+          onClick={handleTimerToggle}
           className="flex items-center justify-center gap-1"
         >
-          {isPaused ? <Play size={16} /> : <Pause size={16} />}
-          {isPaused ? 'Resume' : 'Pause'}
+          {!timerStarted ? <Play size={16} /> : isPaused ? <Play size={16} /> : <Pause size={16} />}
+          {!timerStarted ? 'Start Timer' : isPaused ? 'Resume' : 'Pause'}
         </Button>
 
         {isTodo && onPostpone && (
