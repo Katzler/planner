@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Clock, Pause, Play, CalendarClock, X } from 'lucide-react';
+import { Check, Clock, Pause, Play, CalendarClock, X, Calendar, MapPin } from 'lucide-react';
 import type { ScheduledTask, Timeframe } from '../../types';
-import { TIMEFRAME_CONFIG } from '../../types';
+import { TIMEFRAME_CONFIG, CALENDAR_EVENT_COLOR } from '../../types';
 import { Button } from '../common/Button';
 import { ProgressBar } from '../common/ProgressBar';
 import { differenceInSeconds, parseISO } from 'date-fns';
@@ -115,6 +115,73 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
         <p style={{ color: 'var(--text-secondary)' }}>
           You've completed all tasks for today.
         </p>
+      </div>
+    );
+  }
+
+  // Calendar event: simplified display
+  if (task.sourceType === 'calendar') {
+    const calendarColor = task.color || CALENDAR_EVENT_COLOR;
+    const startTimeStr = parseISO(task.scheduledStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const endTimeStr = parseISO(task.scheduledEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    return (
+      <div
+        className="p-6"
+        style={{
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--border-radius-lg)',
+          border: '1px solid var(--border-primary)',
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <span
+            className="px-2 py-1 text-xs font-medium uppercase flex items-center gap-1"
+            style={{
+              borderRadius: 'var(--border-radius-sm)',
+              backgroundColor: `${calendarColor}20`,
+              color: calendarColor,
+            }}
+          >
+            <Calendar size={12} />
+            Calendar Event
+          </span>
+          <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <Clock size={14} />
+            <span>{startTimeStr} - {endTimeStr}</span>
+          </div>
+        </div>
+
+        {/* Title */}
+        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+          {task.title}
+        </h2>
+
+        {/* Location */}
+        {task.location && (
+          <div className="flex items-center gap-1.5 mb-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <MapPin size={14} />
+            <span>{task.location}</span>
+          </div>
+        )}
+
+        {/* Duration info */}
+        <div className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+          {task.duration} minutes
+        </div>
+
+        {/* Done button */}
+        <Button
+          ref={doneButtonRef}
+          variant="success"
+          size="sm"
+          onClick={handleComplete}
+          className="w-full flex items-center justify-center gap-1"
+        >
+          <Check size={16} />
+          Done
+        </Button>
       </div>
     );
   }

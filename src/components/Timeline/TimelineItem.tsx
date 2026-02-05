@@ -1,9 +1,9 @@
 import { format, parseISO } from 'date-fns';
-import { Coffee, Check } from 'lucide-react';
+import { Coffee, Check, Calendar } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ScheduledTask } from '../../types';
-import { TIMEFRAME_CONFIG } from '../../types';
+import { TIMEFRAME_CONFIG, CALENDAR_EVENT_COLOR } from '../../types';
 
 interface TimelineItemProps {
   task: ScheduledTask;
@@ -32,11 +32,18 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
   const endTime = format(parseISO(task.scheduledEnd), 'HH:mm');
 
   const isBreak = task.sourceType === 'break';
+  const isCalendar = task.sourceType === 'calendar';
   const isCompleted = task.status === 'completed';
   const isSkipped = task.status === 'skipped';
   const timeframeConfig = task.timeframe ? TIMEFRAME_CONFIG[task.timeframe] : null;
 
   const getBackgroundStyle = () => {
+    if (isCalendar) {
+      return {
+        background: `${CALENDAR_EVENT_COLOR}10`,
+        borderLeft: `3px solid ${CALENDAR_EVENT_COLOR}`,
+      };
+    }
     if (isBreak) {
       return {
         background: 'rgba(0, 0, 0, 0.15)',
@@ -63,9 +70,9 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
     return {};
   };
 
-  // Breaks should not be interactive
-  const interactiveProps = isBreak
-    ? {}
+  // Breaks and calendar events should not be draggable
+  const interactiveProps = (isBreak || isCalendar)
+    ? { ...(isCalendar ? { onClick } : {}) }
     : {
         onClick,
         ...attributes,
@@ -83,7 +90,7 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
       }}
       {...interactiveProps}
       className={`relative flex items-center gap-3 py-2 px-4 transition-colors touch-none ${
-        isBreak ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+        isBreak || isCalendar ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
       } ${isDragging ? 'scale-[1.02]' : ''}`}
     >
       {/* Time */}
@@ -107,6 +114,9 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
           )}
           {isBreak && (
             <Coffee size={14} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
+          )}
+          {isCalendar && (
+            <Calendar size={14} style={{ color: CALENDAR_EVENT_COLOR }} className="shrink-0" />
           )}
 
           <span
@@ -151,6 +161,18 @@ export function TimelineItem({ task, isActive, onClick }: TimelineItemProps) {
             <>
               <span>•</span>
               <span style={{ color: 'var(--accent-primary)' }}>Core</span>
+            </>
+          )}
+          {isCalendar && (
+            <>
+              <span>•</span>
+              <span style={{ color: CALENDAR_EVENT_COLOR }}>Calendar</span>
+            </>
+          )}
+          {isCalendar && task.location && (
+            <>
+              <span>•</span>
+              <span className="truncate">{task.location}</span>
             </>
           )}
         </div>

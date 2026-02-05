@@ -23,6 +23,8 @@ import { Calendar, Clock, Moon, Coffee, Target, ListTodo } from 'lucide-react';
 import { format, parseISO, isBefore, isAfter, isTomorrow } from 'date-fns';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useTaskStore } from '../../stores/taskStore';
+import { useCalendarStore } from '../../stores/calendarStore';
+import { CALENDAR_EVENT_COLOR } from '../../types';
 
 type TabType = 'today' | 'upcoming';
 
@@ -36,6 +38,7 @@ export function Timeline({ schedule, activeTaskId, onTaskClick }: TimelineProps)
   const reorderSchedule = useScheduleStore((state) => state.reorderSchedule);
   const { getNextWorkDay, getScheduleConfigForDate } = useScheduleStore();
   const { coreTasks, todos } = useTaskStore();
+  const { events: calendarEvents } = useCalendarStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState<TabType>('today');
 
@@ -53,8 +56,8 @@ export function Timeline({ schedule, activeTaskId, onTaskClick }: TimelineProps)
   // Generate tomorrow's schedule
   const upcomingSchedule = useMemo(() => {
     if (!nextWorkDayConfig.enabled) return [];
-    return generateScheduleForDate(nextWorkDay, coreTasks, todos, nextWorkDayConfig);
-  }, [nextWorkDay, coreTasks, todos, nextWorkDayConfig]);
+    return generateScheduleForDate(nextWorkDay, coreTasks, todos, nextWorkDayConfig, calendarEvents);
+  }, [nextWorkDay, coreTasks, todos, nextWorkDayConfig, calendarEvents]);
 
   // Update current time every minute
   useEffect(() => {
@@ -119,6 +122,7 @@ export function Timeline({ schedule, activeTaskId, onTaskClick }: TimelineProps)
   const upcomingTotalMinutes = getTotalScheduledMinutes(upcomingSchedule);
   const upcomingCoreCount = upcomingSchedule.filter(t => t.sourceType === 'core').length;
   const upcomingTodoCount = upcomingSchedule.filter(t => t.sourceType === 'todo').length;
+  const upcomingCalendarCount = upcomingSchedule.filter(t => t.sourceType === 'calendar').length;
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -235,6 +239,12 @@ export function Timeline({ schedule, activeTaskId, onTaskClick }: TimelineProps)
                   <ListTodo size={14} style={{ color: 'var(--status-success)' }} />
                   {upcomingTodoCount} todos
                 </span>
+                {upcomingCalendarCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Calendar size={14} style={{ color: CALENDAR_EVENT_COLOR }} />
+                    {upcomingCalendarCount} events
+                  </span>
+                )}
               </div>
             </>
           )}
@@ -320,9 +330,11 @@ function UpcomingTaskItem({ task }: { task: ScheduledTask }) {
   const startTime = parseISO(task.scheduledStart);
   const isBreak = task.sourceType === 'break';
   const isCore = task.sourceType === 'core';
+  const isCalendar = task.sourceType === 'calendar';
 
   const getTaskColor = () => {
     if (isBreak) return 'var(--text-muted)';
+    if (isCalendar) return task.color || CALENDAR_EVENT_COLOR;
     if (task.color) return task.color;
     if (task.timeframe) return TIMEFRAME_CONFIG[task.timeframe].color;
     return 'var(--accent-primary)';
@@ -372,7 +384,7 @@ function UpcomingTaskItem({ task }: { task: ScheduledTask }) {
             color: isCore ? 'var(--accent-primary)' : getTaskColor(),
           }}
         >
-          {isCore ? 'Core' : task.timeframe ? TIMEFRAME_CONFIG[task.timeframe].label : 'Todo'}
+          {isCalendar ? 'Calendar' : isCore ? 'Core' : task.timeframe ? TIMEFRAME_CONFIG[task.timeframe].label : 'Todo'}
         </span>
       )}
     </div>

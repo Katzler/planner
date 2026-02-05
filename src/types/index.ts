@@ -48,11 +48,24 @@ export interface TodoItem {
   notes?: string; // optional notes (e.g., reason for postponing)
 }
 
+// Calendar event imported from iCal feed
+export interface CalendarEvent {
+  id: string;            // UID from .ics or generated
+  title: string;         // SUMMARY
+  description?: string;  // DESCRIPTION
+  start: string;         // ISO string from DTSTART
+  end: string;           // ISO string from DTEND
+  location?: string;     // LOCATION
+  isAllDay: boolean;     // true if DTSTART is DATE-only
+  color?: string;
+  importedAt: string;    // when last synced
+}
+
 // Scheduled task for a specific day
 export interface ScheduledTask {
   id: string;
-  sourceId: string; // CoreTask or TodoItem id
-  sourceType: 'core' | 'todo' | 'break';
+  sourceId: string; // CoreTask, TodoItem, or CalendarEvent id
+  sourceType: 'core' | 'todo' | 'break' | 'calendar';
   title: string;
   scheduledStart: string; // ISO string
   scheduledEnd: string; // ISO string
@@ -62,6 +75,7 @@ export interface ScheduledTask {
   duration: number; // minutes
   timeframe?: Timeframe;
   color?: string;
+  location?: string; // for calendar events
 }
 
 // Timeframe colors and labels
@@ -73,6 +87,8 @@ export const TIMEFRAME_CONFIG = {
   this_month: { color: '#8b5cf6', label: 'This Month' },
   someday: { color: '#64748b', label: 'Someday' },
 } as const;
+
+export const CALENDAR_EVENT_COLOR = '#0ea5e9'; // sky blue
 
 // Default schedule
 export const DEFAULT_DAY_SCHEDULE: DaySchedule = {

@@ -17,6 +17,7 @@ import { CurrentTask } from './components/Timeline/CurrentTask';
 import { CoreTaskList } from './components/Tasks/CoreTaskList';
 import { TodoList } from './components/Tasks/TodoList';
 import { ScheduleSettings } from './components/Settings/ScheduleSettings';
+import { CalendarSettings } from './components/Settings/CalendarSettings';
 import { ExportImport } from './components/Settings/ExportImport';
 import { ThemeSelector } from './components/Settings/ThemeSelector';
 import { Button } from './components/common/Button';
@@ -27,6 +28,7 @@ import { MusicPlayer } from './components/common/MusicPlayer';
 // Stores
 import { useTaskStore } from './stores/taskStore';
 import { useScheduleStore } from './stores/scheduleStore';
+import { useCalendarStore } from './stores/calendarStore';
 import { useThemeStore, type Theme } from './stores/themeStore';
 
 // Hooks
@@ -48,7 +50,8 @@ function App() {
   const currentTaskRef = useRef<{ togglePause: () => void } | null>(null);
 
   // Stores
-  const { coreTasks, todos, updateTodo } = useTaskStore();
+  const { coreTasks, todos, updateTodo, rolloverTimeframes } = useTaskStore();
+  const { events: calendarEvents, autoSync, icalUrl, proxyUrl, syncCalendar } = useCalendarStore();
   const { theme, setTheme } = useThemeStore();
 
   // Sun/moon position for glass theme
@@ -85,11 +88,11 @@ function App() {
   // Generate today's schedule
   const doRegenerateSchedule = useCallback(() => {
     const dayConfig = getTodayScheduleConfig();
-    const schedule = generateDailySchedule(coreTasks, todos, dayConfig);
+    const schedule = generateDailySchedule(coreTasks, todos, dayConfig, calendarEvents);
     setTodaySchedule(schedule);
     toast.success('Schedule regenerated');
     setShowRegenerateConfirm(false);
-  }, [coreTasks, todos, getTodayScheduleConfig, setTodaySchedule]);
+  }, [coreTasks, todos, calendarEvents, getTodayScheduleConfig, setTodaySchedule]);
 
   const regenerateSchedule = useCallback(() => {
     // Show confirmation if day has started (to warn about losing manual reordering)
@@ -100,11 +103,30 @@ function App() {
     }
   }, [todaySchedule, doRegenerateSchedule]);
 
+  // Roll over timeframes on mount (e.g. "tomorrow" → "today")
+  useEffect(() => {
+    rolloverTimeframes();
+  }, []);
+
+  // Auto-sync calendar on mount, then regenerate schedule with new events
+  useEffect(() => {
+    if (autoSync && icalUrl && proxyUrl) {
+      syncCalendar().then((result) => {
+        if (result.success && result.count > 0) {
+          const dayConfig = getTodayScheduleConfig();
+          const freshEvents = useCalendarStore.getState().events;
+          const schedule = generateDailySchedule(coreTasks, todos, dayConfig, freshEvents);
+          setTodaySchedule(schedule);
+        }
+      });
+    }
+  }, []);
+
   // Auto-generate schedule on mount
   useEffect(() => {
     if (todaySchedule.length === 0 && (coreTasks.length > 0 || todos.length > 0)) {
       const dayConfig = getTodayScheduleConfig();
-      const schedule = generateDailySchedule(coreTasks, todos, dayConfig);
+      const schedule = generateDailySchedule(coreTasks, todos, dayConfig, calendarEvents);
       setTodaySchedule(schedule);
     }
   }, []);
@@ -142,7 +164,7 @@ function App() {
       return;
     }
 
-    const schedule = generateDailySchedule(coreTasks, todos, dayConfig);
+    const schedule = generateDailySchedule(coreTasks, todos, dayConfig, calendarEvents);
     if (schedule.length === 0) {
       toast.error('No tasks to schedule. Add some tasks first.');
       return;
@@ -476,6 +498,7 @@ function App() {
                 >
                   <ThemeSelector />
                   <ScheduleSettings />
+                  <CalendarSettings />
                   <ExportImport />
                 </motion.div>
               )}

@@ -1,11 +1,12 @@
 import type {
   CoreTask,
   TodoItem,
+  CalendarEvent,
   ScheduledTask,
   DaySchedule,
   Timeframe,
 } from '../types';
-import { TIMEFRAME_CONFIG } from '../types';
+import { TIMEFRAME_CONFIG, CALENDAR_EVENT_COLOR } from '../types';
 import {
   addMinutes,
   getDay,
@@ -19,7 +20,9 @@ import {
   endOfMonth,
   isWithinInterval,
   differenceInDays,
+  parseISO,
 } from 'date-fns';
+import { getTimedEventsForDate } from './icsParser';
 
 const generateId = () => crypto.randomUUID().split('-')[0];
 
@@ -165,6 +168,54 @@ function parseTimeForDate(timeStr: string, date: Date): Date {
   return setMinutes(setHours(date, hours), minutes);
 }
 
+// Sorted calendar blocks for a given date (within work hours)
+interface CalendarBlock {
+  start: Date;
+  end: Date;
+  event: CalendarEvent;
+}
+
+function getCalendarBlocksForDate(
+  calendarEvents: CalendarEvent[],
+  date: Date,
+  dayStart: Date,
+  dayEnd: Date
+): CalendarBlock[] {
+  const dayEvents = getTimedEventsForDate(calendarEvents, date);
+
+  return dayEvents
+    .map((event) => {
+      const eventStart = parseISO(event.start);
+      const eventEnd = parseISO(event.end);
+      // Clamp to work hours
+      const clampedStart = eventStart < dayStart ? dayStart : eventStart;
+      const clampedEnd = eventEnd > dayEnd ? dayEnd : eventEnd;
+      return { start: clampedStart, end: clampedEnd, event };
+    })
+    .filter((block) => block.start < block.end) // only blocks that overlap work hours
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+
+// Convert calendar events to ScheduledTask entries (using original event times, not clamped)
+function calendarEventsToScheduledTasks(events: CalendarEvent[]): ScheduledTask[] {
+  return events.map((event) => {
+    const start = parseISO(event.start);
+    const end = parseISO(event.end);
+    return {
+      id: generateId(),
+      sourceId: event.id,
+      sourceType: 'calendar' as const,
+      title: event.title,
+      scheduledStart: event.start,
+      scheduledEnd: event.end,
+      status: 'pending' as const,
+      duration: (end.getTime() - start.getTime()) / (1000 * 60),
+      color: event.color || CALENDAR_EVENT_COLOR,
+      location: event.location,
+    };
+  });
+}
+
 // Check if a core task should run on a specific date
 export function shouldCoreTaskRunOnDate(task: CoreTask, date: Date): boolean {
   const dayOfWeek = getDay(date); // 0 = Sunday, 6 = Saturday
@@ -261,7 +312,8 @@ function getSpreadSlots(
 export function generateDailySchedule(
   coreTasks: CoreTask[],
   todos: TodoItem[],
-  dayConfig: DaySchedule
+  dayConfig: DaySchedule,
+  calendarEvents: CalendarEvent[] = []
 ): ScheduledTask[] {
   if (!dayConfig.enabled) {
     return [];
@@ -271,6 +323,14 @@ export function generateDailySchedule(
   const startTime = parseTimeToday(dayConfig.startTime);
   const endTime = parseTimeToday(dayConfig.endTime);
   const breakDuration = dayConfig.breakDuration;
+
+  // Get calendar events for today
+  const today = new Date();
+  const todayTimedEvents = getTimedEventsForDate(calendarEvents, today);
+  // Clamped blocks for scheduling avoidance (only events overlapping work hours)
+  const calendarBlocks = getCalendarBlocksForDate(calendarEvents, today, startTime, endTime);
+  // Display tasks from ALL timed events (including those outside work hours)
+  const calendarScheduledTasks = calendarEventsToScheduledTasks(todayTimedEvents);
 
   // Filter tasks for today
   const todaysCoreTasks = coreTasks.filter(shouldCoreTaskRunToday);
@@ -318,6 +378,23 @@ export function generateDailySchedule(
   let currentTime = new Date(startTime);
   let spreadSlotIndex = 0;
 
+  // Advance currentTime past any calendar blocks it falls within
+  const advancePastCalendarBlocks = () => {
+    for (const block of calendarBlocks) {
+      if (currentTime >= block.start && currentTime < block.end) {
+        currentTime = new Date(block.end);
+      }
+    }
+  };
+
+  // Find the next calendar block that starts after currentTime
+  const getNextCalendarBlock = (): CalendarBlock | null => {
+    for (const block of calendarBlocks) {
+      if (block.start > currentTime) return block;
+    }
+    return null;
+  };
+
   // Helper to add a task with break
   const addTask = (
     sourceId: string,
@@ -327,10 +404,31 @@ export function generateDailySchedule(
     timeframe?: Timeframe,
     color?: string
   ) => {
+    advancePastCalendarBlocks();
     if (currentTime >= endTime) return false;
 
+    // Check if task would overlap a calendar block
     const taskEnd = addMinutes(currentTime, duration);
-    const actualEnd = taskEnd > endTime ? endTime : taskEnd;
+    const nextBlock = getNextCalendarBlock();
+    if (nextBlock && taskEnd > nextBlock.start) {
+      // If the task doesn't fit before the block, skip past the block
+      if (addMinutes(currentTime, duration).getTime() > nextBlock.start.getTime()) {
+        // Check if there's meaningful time before the block (at least 5 min)
+        const gapMinutes = (nextBlock.start.getTime() - currentTime.getTime()) / (1000 * 60);
+        if (gapMinutes < 5) {
+          // Skip past the block
+          currentTime = new Date(nextBlock.end);
+          advancePastCalendarBlocks();
+          if (currentTime >= endTime) return false;
+        }
+      }
+    }
+
+    advancePastCalendarBlocks();
+    if (currentTime >= endTime) return false;
+
+    const taskEnd2 = addMinutes(currentTime, duration);
+    const actualEnd = taskEnd2 > endTime ? endTime : taskEnd2;
     const actualDuration = (actualEnd.getTime() - currentTime.getTime()) / (1000 * 60);
 
     schedule.push({
@@ -350,10 +448,15 @@ export function generateDailySchedule(
 
     // Add break after task if there's time
     if (breakDuration > 0 && currentTime < endTime) {
+      advancePastCalendarBlocks();
       const breakEnd = addMinutes(currentTime, breakDuration);
       if (breakEnd <= endTime) {
-        schedule.push(createBreak(currentTime, breakDuration));
-        currentTime = breakEnd;
+        // Only add break if it doesn't overlap a calendar block
+        const nextBlockAfter = getNextCalendarBlock();
+        if (!nextBlockAfter || breakEnd <= nextBlockAfter.start) {
+          schedule.push(createBreak(currentTime, breakDuration));
+          currentTime = breakEnd;
+        }
       }
     }
 
@@ -526,7 +629,13 @@ export function generateDailySchedule(
     spreadSlotIndex++;
   }
 
-  return schedule;
+  // Merge calendar events into the schedule and sort by start time
+  const fullSchedule = [...schedule, ...calendarScheduledTasks];
+  fullSchedule.sort((a, b) =>
+    new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()
+  );
+
+  return fullSchedule;
 }
 
 // Calculate total scheduled time
@@ -555,7 +664,8 @@ export function generateScheduleForDate(
   date: Date,
   coreTasks: CoreTask[],
   todos: TodoItem[],
-  dayConfig: DaySchedule
+  dayConfig: DaySchedule,
+  calendarEvents: CalendarEvent[] = []
 ): ScheduledTask[] {
   if (!dayConfig.enabled) {
     return [];
@@ -565,6 +675,13 @@ export function generateScheduleForDate(
   const startTime = parseTimeForDate(dayConfig.startTime, date);
   const endTime = parseTimeForDate(dayConfig.endTime, date);
   const breakDuration = dayConfig.breakDuration;
+
+  // Get calendar events for the target date
+  const dateTimedEvents = getTimedEventsForDate(calendarEvents, date);
+  // Clamped blocks for scheduling avoidance (only events overlapping work hours)
+  const calendarBlocks = getCalendarBlocksForDate(calendarEvents, date, startTime, endTime);
+  // Display tasks from ALL timed events (including those outside work hours)
+  const calendarScheduledTasks = calendarEventsToScheduledTasks(dateTimedEvents);
 
   // Filter tasks for the target date
   const dateTasks = coreTasks.filter((task) => shouldCoreTaskRunOnDate(task, date));
@@ -609,6 +726,23 @@ export function generateScheduleForDate(
   let currentTime = new Date(startTime);
   let spreadSlotIndex = 0;
 
+  // Advance currentTime past any calendar blocks it falls within
+  const advancePastCalendarBlocks = () => {
+    for (const block of calendarBlocks) {
+      if (currentTime >= block.start && currentTime < block.end) {
+        currentTime = new Date(block.end);
+      }
+    }
+  };
+
+  // Find the next calendar block that starts after currentTime
+  const getNextCalendarBlock = (): CalendarBlock | null => {
+    for (const block of calendarBlocks) {
+      if (block.start > currentTime) return block;
+    }
+    return null;
+  };
+
   // Helper to add a task with break
   const addTask = (
     sourceId: string,
@@ -618,10 +752,26 @@ export function generateScheduleForDate(
     timeframe?: Timeframe,
     color?: string
   ) => {
+    advancePastCalendarBlocks();
     if (currentTime >= endTime) return false;
 
+    // Check if task would overlap a calendar block
     const taskEnd = addMinutes(currentTime, duration);
-    const actualEnd = taskEnd > endTime ? endTime : taskEnd;
+    const nextBlock = getNextCalendarBlock();
+    if (nextBlock && taskEnd > nextBlock.start) {
+      const gapMinutes = (nextBlock.start.getTime() - currentTime.getTime()) / (1000 * 60);
+      if (gapMinutes < 5) {
+        currentTime = new Date(nextBlock.end);
+        advancePastCalendarBlocks();
+        if (currentTime >= endTime) return false;
+      }
+    }
+
+    advancePastCalendarBlocks();
+    if (currentTime >= endTime) return false;
+
+    const taskEnd2 = addMinutes(currentTime, duration);
+    const actualEnd = taskEnd2 > endTime ? endTime : taskEnd2;
     const actualDuration = (actualEnd.getTime() - currentTime.getTime()) / (1000 * 60);
 
     schedule.push({
@@ -640,10 +790,14 @@ export function generateScheduleForDate(
     currentTime = actualEnd;
 
     if (breakDuration > 0 && currentTime < endTime) {
+      advancePastCalendarBlocks();
       const breakEnd = addMinutes(currentTime, breakDuration);
       if (breakEnd <= endTime) {
-        schedule.push(createBreak(currentTime, breakDuration));
-        currentTime = breakEnd;
+        const nextBlockAfter = getNextCalendarBlock();
+        if (!nextBlockAfter || breakEnd <= nextBlockAfter.start) {
+          schedule.push(createBreak(currentTime, breakDuration));
+          currentTime = breakEnd;
+        }
       }
     }
 
@@ -801,5 +955,11 @@ export function generateScheduleForDate(
     spreadSlotIndex++;
   }
 
-  return schedule;
+  // Merge calendar events into the schedule and sort by start time
+  const fullSchedule = [...schedule, ...calendarScheduledTasks];
+  fullSchedule.sort((a, b) =>
+    new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()
+  );
+
+  return fullSchedule;
 }

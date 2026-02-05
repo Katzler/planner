@@ -3,6 +3,8 @@ import { Download, Upload, AlertTriangle } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useTaskStore } from '../../stores/taskStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
+import { useCalendarStore } from '../../stores/calendarStore';
+import type { CalendarEvent } from '../../types';
 import toast from 'react-hot-toast';
 
 interface ExportData {
@@ -15,12 +17,19 @@ interface ExportData {
   schedule: {
     weekSchedule: ReturnType<typeof useScheduleStore.getState>['weekSchedule'];
   };
+  calendar?: {
+    icalUrl: string | null;
+    proxyUrl: string | null;
+    autoSync: boolean;
+    events: CalendarEvent[];
+  };
 }
 
 export function ExportImport() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const taskStore = useTaskStore();
   const scheduleStore = useScheduleStore();
+  const calendarStore = useCalendarStore();
 
   const handleExport = () => {
     try {
@@ -33,6 +42,12 @@ export function ExportImport() {
         },
         schedule: {
           weekSchedule: scheduleStore.weekSchedule,
+        },
+        calendar: {
+          icalUrl: calendarStore.icalUrl,
+          proxyUrl: calendarStore.proxyUrl,
+          autoSync: calendarStore.autoSync,
+          events: calendarStore.events,
         },
       };
 
@@ -105,6 +120,14 @@ export function ExportImport() {
         // Import schedule
         if (data.schedule.weekSchedule) {
           scheduleStore.setWeekSchedule(data.schedule.weekSchedule);
+        }
+
+        // Import calendar settings
+        if (data.calendar) {
+          calendarStore.setIcalUrl(data.calendar.icalUrl);
+          calendarStore.setProxyUrl(data.calendar.proxyUrl);
+          calendarStore.setAutoSync(data.calendar.autoSync);
+          useCalendarStore.setState({ events: data.calendar.events || [] });
         }
 
         toast.success('Data imported');
