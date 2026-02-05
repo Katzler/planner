@@ -9,6 +9,9 @@ import {
   Play,
   RefreshCw,
   Clock,
+  Palette,
+  Calendar,
+  Download,
 } from 'lucide-react';
 
 // Components
@@ -20,6 +23,7 @@ import { ScheduleSettings } from './components/Settings/ScheduleSettings';
 import { CalendarSettings } from './components/Settings/CalendarSettings';
 import { ExportImport } from './components/Settings/ExportImport';
 import { ThemeSelector } from './components/Settings/ThemeSelector';
+import { SettingsSection } from './components/Settings/SettingsSection';
 import { Button } from './components/common/Button';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { ProgressBar } from './components/common/ProgressBar';
@@ -494,12 +498,37 @@ function App() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="space-y-8"
+                  className="space-y-4"
                 >
-                  <ThemeSelector />
-                  <ScheduleSettings />
-                  <CalendarSettings />
-                  <ExportImport />
+                  <SettingsSection
+                    icon={<Palette style={{ color: 'var(--accent-primary)' }} size={20} />}
+                    title="Theme"
+                    description="Choose your visual style"
+                    defaultOpen
+                  >
+                    <ThemeSelector />
+                  </SettingsSection>
+                  <SettingsSection
+                    icon={<Clock style={{ color: 'var(--accent-primary)' }} size={20} />}
+                    title="Work Schedule"
+                    description="Configure your working hours for each day"
+                  >
+                    <ScheduleSettings />
+                  </SettingsSection>
+                  <SettingsSection
+                    icon={<Calendar style={{ color: 'var(--accent-primary)' }} size={20} />}
+                    title="Calendar Connection"
+                    description="Import events from your calendar via iCal"
+                  >
+                    <CalendarSettings />
+                  </SettingsSection>
+                  <SettingsSection
+                    icon={<Download style={{ color: 'var(--accent-primary)' }} size={20} />}
+                    title="Backup & Restore"
+                    description="Export or restore your data"
+                  >
+                    <ExportImport />
+                  </SettingsSection>
                 </motion.div>
               )}
             </AnimatePresence>

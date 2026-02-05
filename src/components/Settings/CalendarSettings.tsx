@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, RefreshCw, Unlink, Info } from 'lucide-react';
+import { RefreshCw, Unlink, Info } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { getTimedEventsForDate } from '../../utils/icsParser';
@@ -79,26 +79,6 @@ export function CalendarSettings() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div
-          className="w-10 h-10 flex items-center justify-center"
-          style={{
-            borderRadius: 'var(--border-radius-md)',
-            background: 'var(--accent-bg)',
-          }}
-        >
-          <Calendar style={{ color: 'var(--accent-primary)' }} size={20} />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Calendar Connection
-          </h2>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Import events from your calendar via iCal
-          </p>
-        </div>
-      </div>
-
       {/* URL Input */}
       <div className="space-y-3">
         <div>

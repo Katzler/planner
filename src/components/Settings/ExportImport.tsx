@@ -142,26 +142,6 @@ export function ExportImport() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div
-          className="w-10 h-10 flex items-center justify-center"
-          style={{
-            borderRadius: 'var(--border-radius-md)',
-            background: 'var(--accent-bg)',
-          }}
-        >
-          <Download style={{ color: 'var(--accent-primary)' }} size={20} />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Backup & Restore
-          </h2>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Export or restore your data
-          </p>
-        </div>
-      </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div
           className="p-4"

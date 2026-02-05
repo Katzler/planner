@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Save, RotateCcw } from 'lucide-react';
+import { Save, RotateCcw } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import type { DayOfWeek, DaySchedule } from '../../types';
@@ -144,40 +144,18 @@ export function ScheduleSettings() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 flex items-center justify-center"
-            style={{
-              borderRadius: 'var(--border-radius-md)',
-              background: 'var(--accent-bg)',
-            }}
-          >
-            <Clock style={{ color: 'var(--accent-primary)' }} size={20} />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Work Schedule
-            </h2>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Configure your working hours for each day
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handleReset}>
-            <RotateCcw size={16} className="mr-1" />
-            Reset
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={handleReset}>
+          <RotateCcw size={16} className="mr-1" />
+          Reset
+        </Button>
+        {hasChanges && (
+          <Button variant="primary" size="sm" onClick={handleSave}>
+            <Save size={16} className="mr-1" />
+            Save
           </Button>
-          {hasChanges && (
-            <Button variant="primary" size="sm" onClick={handleSave}>
-              <Save size={16} className="mr-1" />
-              Save
-            </Button>
-          )}
-        </div>
+        )}
       </div>
 
       <div className="space-y-2">
