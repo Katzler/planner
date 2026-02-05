@@ -4,10 +4,11 @@ import { startOfDay, endOfDay, addWeeks, subWeeks, isBefore, isAfter, parseISO }
 import type { CalendarEvent } from '../types';
 import { parseIcsFile } from '../utils/icsParser';
 
+const PROXY_URL = 'https://yellow-resonance-4153.jack-katzler.workers.dev/';
+
 interface CalendarState {
   // Connection settings
   icalUrl: string | null;
-  proxyUrl: string | null;
   autoSync: boolean;
   lastSyncedAt: string | null;
 
@@ -16,7 +17,6 @@ interface CalendarState {
 
   // Actions
   setIcalUrl: (url: string | null) => void;
-  setProxyUrl: (url: string | null) => void;
   setAutoSync: (enabled: boolean) => void;
   syncCalendar: () => Promise<{ success: boolean; count: number; error?: string }>;
   clearEvents: () => void;
@@ -30,24 +30,22 @@ export const useCalendarStore = create<CalendarState>()(
   persist(
     (set, get) => ({
       icalUrl: null,
-      proxyUrl: null,
       autoSync: true,
       lastSyncedAt: null,
       events: [],
 
       setIcalUrl: (url) => set({ icalUrl: url }),
-      setProxyUrl: (url) => set({ proxyUrl: url }),
       setAutoSync: (enabled) => set({ autoSync: enabled }),
 
       syncCalendar: async () => {
-        const { icalUrl, proxyUrl } = get();
+        const { icalUrl } = get();
 
-        if (!icalUrl || !proxyUrl) {
-          return { success: false, count: 0, error: 'Missing iCal URL or proxy URL' };
+        if (!icalUrl) {
+          return { success: false, count: 0, error: 'Missing iCal URL' };
         }
 
         try {
-          const fetchUrl = `${proxyUrl}${proxyUrl.includes('?') ? '&' : '?'}url=${encodeURIComponent(icalUrl)}`;
+          const fetchUrl = `${PROXY_URL}?url=${encodeURIComponent(icalUrl)}`;
           const response = await fetch(fetchUrl);
 
           if (!response.ok) {
@@ -84,7 +82,6 @@ export const useCalendarStore = create<CalendarState>()(
       disconnect: () =>
         set({
           icalUrl: null,
-          proxyUrl: null,
           autoSync: true,
           lastSyncedAt: null,
           events: [],
@@ -107,7 +104,6 @@ export const useCalendarStore = create<CalendarState>()(
       name: 'daily-planner-calendar',
       partialize: (state) => ({
         icalUrl: state.icalUrl,
-        proxyUrl: state.proxyUrl,
         autoSync: state.autoSync,
         lastSyncedAt: state.lastSyncedAt,
         events: state.events,

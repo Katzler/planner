@@ -51,7 +51,7 @@ function App() {
 
   // Stores
   const { coreTasks, todos, updateTodo, rolloverTimeframes } = useTaskStore();
-  const { events: calendarEvents, autoSync, icalUrl, proxyUrl, syncCalendar } = useCalendarStore();
+  const { events: calendarEvents, autoSync, icalUrl, syncCalendar } = useCalendarStore();
   const { theme, setTheme } = useThemeStore();
 
   // Sun/moon position for glass theme
@@ -110,7 +110,7 @@ function App() {
 
   // Auto-sync calendar on mount, then regenerate schedule with new events
   useEffect(() => {
-    if (autoSync && icalUrl && proxyUrl) {
+    if (autoSync && icalUrl) {
       syncCalendar().then((result) => {
         if (result.success && result.count > 0) {
           const dayConfig = getTodayScheduleConfig();

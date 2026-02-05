@@ -19,12 +19,10 @@ const inputStyle = {
 export function CalendarSettings() {
   const {
     icalUrl,
-    proxyUrl,
     autoSync,
     lastSyncedAt,
     events,
     setIcalUrl,
-    setProxyUrl,
     setAutoSync,
     syncCalendar,
     disconnect,
@@ -32,30 +30,27 @@ export function CalendarSettings() {
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [localIcalUrl, setLocalIcalUrl] = useState(icalUrl || '');
-  const [localProxyUrl, setLocalProxyUrl] = useState(proxyUrl || '');
 
-  const isConnected = icalUrl && proxyUrl;
+  const isConnected = !!icalUrl;
 
   const handleSave = () => {
-    if (!localIcalUrl.trim() || !localProxyUrl.trim()) {
-      toast.error('Both URLs are required');
+    if (!localIcalUrl.trim()) {
+      toast.error('iCal URL is required');
       return;
     }
     setIcalUrl(localIcalUrl.trim());
-    setProxyUrl(localProxyUrl.trim());
-    toast.success('Calendar URLs saved');
+    toast.success('Calendar URL saved');
   };
 
   const handleSync = async () => {
-    if (!localIcalUrl.trim() || !localProxyUrl.trim()) {
-      toast.error('Both URLs are required');
+    if (!localIcalUrl.trim()) {
+      toast.error('iCal URL is required');
       return;
     }
 
-    // Save URLs first if changed
-    if (localIcalUrl.trim() !== icalUrl || localProxyUrl.trim() !== proxyUrl) {
+    // Save URL first if changed
+    if (localIcalUrl.trim() !== icalUrl) {
       setIcalUrl(localIcalUrl.trim());
-      setProxyUrl(localProxyUrl.trim());
     }
 
     setIsSyncing(true);
@@ -72,7 +67,6 @@ export function CalendarSettings() {
   const handleDisconnect = () => {
     disconnect();
     setLocalIcalUrl('');
-    setLocalProxyUrl('');
     toast.success('Calendar disconnected');
   };
 
@@ -105,7 +99,7 @@ export function CalendarSettings() {
         </div>
       </div>
 
-      {/* URL Inputs */}
+      {/* URL Input */}
       <div className="space-y-3">
         <div>
           <label
@@ -119,23 +113,6 @@ export function CalendarSettings() {
             value={localIcalUrl}
             onChange={(e) => setLocalIcalUrl(e.target.value)}
             placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
-            style={inputStyle}
-            className="focus:outline-none focus:ring-2"
-          />
-        </div>
-
-        <div>
-          <label
-            className="block text-sm font-medium mb-1"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            CORS Proxy URL
-          </label>
-          <input
-            type="url"
-            value={localProxyUrl}
-            onChange={(e) => setLocalProxyUrl(e.target.value)}
-            placeholder="https://your-worker.workers.dev"
             style={inputStyle}
             className="focus:outline-none focus:ring-2"
           />
@@ -163,7 +140,7 @@ export function CalendarSettings() {
           variant="primary"
           size="sm"
           className="flex-1"
-          disabled={isSyncing || !localIcalUrl.trim() || !localProxyUrl.trim()}
+          disabled={isSyncing || !localIcalUrl.trim()}
         >
           <RefreshCw size={14} className={`mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
           {isSyncing ? 'Syncing...' : 'Sync Now'}
@@ -173,7 +150,7 @@ export function CalendarSettings() {
             onClick={handleSave}
             variant="secondary"
             size="sm"
-            disabled={!localIcalUrl.trim() || !localProxyUrl.trim()}
+            disabled={!localIcalUrl.trim()}
           >
             Save
           </Button>
@@ -214,10 +191,6 @@ export function CalendarSettings() {
             <li>Copy "Secret address in iCal format"</li>
             <li>Paste it above</li>
           </ol>
-          <p className="mt-2">
-            A CORS proxy is needed because browsers block direct calendar fetches.
-            You can deploy a free Cloudflare Worker as your proxy.
-          </p>
         </div>
       </div>
     </div>

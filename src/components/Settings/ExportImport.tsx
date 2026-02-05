@@ -19,7 +19,6 @@ interface ExportData {
   };
   calendar?: {
     icalUrl: string | null;
-    proxyUrl: string | null;
     autoSync: boolean;
     events: CalendarEvent[];
   };
@@ -45,7 +44,6 @@ export function ExportImport() {
         },
         calendar: {
           icalUrl: calendarStore.icalUrl,
-          proxyUrl: calendarStore.proxyUrl,
           autoSync: calendarStore.autoSync,
           events: calendarStore.events,
         },
@@ -125,7 +123,6 @@ export function ExportImport() {
         // Import calendar settings
         if (data.calendar) {
           calendarStore.setIcalUrl(data.calendar.icalUrl);
-          calendarStore.setProxyUrl(data.calendar.proxyUrl);
           calendarStore.setAutoSync(data.calendar.autoSync);
           useCalendarStore.setState({ events: data.calendar.events || [] });
         }
