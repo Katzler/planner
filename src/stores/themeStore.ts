@@ -5,11 +5,11 @@ export type Theme = 'startup' | 'glass';
 
 export const THEME_INFO: Record<Theme, { name: string; description: string }> = {
   startup: {
-    name: 'Startup',
+    name: 'Dark',
     description: 'Sleek dark dashboard with gradient accents',
   },
   glass: {
-    name: 'Glassmorphism',
+    name: 'Dynamic',
     description: 'Frosted glass over vibrant gradients',
   },
 };
