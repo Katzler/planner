@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Clock, Pause, Play, CalendarClock, X, Calendar, MapPin } from 'lucide-react';
-import type { ScheduledTask, Timeframe } from '../../types';
+import type { ScheduledTask } from '../../types';
 import { TIMEFRAME_CONFIG, CALENDAR_EVENT_COLOR } from '../../types';
 import { Button } from '../common/Button';
 import { ProgressBar } from '../common/ProgressBar';
@@ -11,7 +11,7 @@ import { celebrate } from '../../utils/celebrations';
 interface CurrentTaskProps {
   task: ScheduledTask | null;
   onComplete: () => void;
-  onPostpone?: (timeframe: Timeframe, notes: string) => void;
+  onPostpone?: (timeframe: string, notes: string) => void;
 }
 
 export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) {
@@ -19,7 +19,7 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
   const [isPaused, setIsPaused] = useState(false);
   const [pausedElapsed, setPausedElapsed] = useState(0);
   const [showPostpone, setShowPostpone] = useState(false);
-  const [postponeTimeframe, setPostponeTimeframe] = useState<Timeframe>('tomorrow');
+  const [postponeTimeframe, setPostponeTimeframe] = useState<string>('later_today');
   const [postponeNotes, setPostponeNotes] = useState('');
   const doneButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -50,7 +50,7 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
     setPausedElapsed(0);
     setShowPostpone(false);
     setPostponeNotes('');
-    setPostponeTimeframe('tomorrow');
+    setPostponeTimeframe('later_today');
   }, [task?.id]);
 
   const handlePauseToggle = () => {
@@ -84,7 +84,7 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
       onPostpone(postponeTimeframe, postponeNotes);
       setShowPostpone(false);
       setPostponeNotes('');
-      setPostponeTimeframe('tomorrow');
+      setPostponeTimeframe('later_today');
     }
   };
 
@@ -321,7 +321,7 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
                 </label>
                 <select
                   value={postponeTimeframe}
-                  onChange={(e) => setPostponeTimeframe(e.target.value as Timeframe)}
+                  onChange={(e) => setPostponeTimeframe(e.target.value)}
                   className="w-full px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   style={{
                     background: 'var(--bg-input)',
@@ -330,6 +330,7 @@ export function CurrentTask({ task, onComplete, onPostpone }: CurrentTaskProps) 
                     color: 'var(--text-primary)',
                   }}
                 >
+                  <option value="later_today">Later Today</option>
                   <option value="tomorrow">Tomorrow</option>
                   <option value="this_week">This Week</option>
                   <option value="next_week">Next Week</option>

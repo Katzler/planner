@@ -39,7 +39,7 @@ import { useThemeStore, type Theme } from './stores/themeStore';
 import { useSunPosition } from './hooks/useSunPosition';
 
 // Types
-import type { Timeframe } from './types';
+import type { Timeframe, ScheduledTask } from './types';
 
 // Utils
 import { generateDailySchedule, getTotalScheduledMinutes } from './utils/scheduler';
@@ -211,34 +211,58 @@ function App() {
   };
 
   // Handle postponing a todo task
-  const handlePostponeTask = (newTimeframe: Timeframe, notes: string) => {
+  const handlePostponeTask = (newTimeframe: string, notes: string) => {
     if (!activeTaskId) return;
 
     const task = todaySchedule.find((t) => t.id === activeTaskId);
     if (!task || task.sourceType !== 'todo') return;
 
-    // Update the todo with new timeframe and notes
-    updateTodo(task.sourceId, {
-      timeframe: newTimeframe,
-      notes: notes || undefined,
-    });
+    if (newTimeframe === 'later_today') {
+      // Move task to end of today's schedule
+      const taskIndex = todaySchedule.findIndex((t) => t.id === activeTaskId);
+      const nextTask = todaySchedule.slice(taskIndex + 1).find((t) => t.sourceType !== 'break');
 
-    // Find next task before skipping
-    const taskIndex = todaySchedule.findIndex((t) => t.id === activeTaskId);
-    const nextTask = todaySchedule.slice(taskIndex + 1).find((t) => t.sourceType !== 'break');
+      // Build new schedule: remove current task, append it at the end as pending
+      const withoutCurrent = todaySchedule.filter((t) => t.id !== activeTaskId);
+      const movedTask: ScheduledTask = { ...task, status: 'pending' as const };
+      if (notes) {
+        updateTodo(task.sourceId, { notes });
+      }
+      setTodaySchedule([...withoutCurrent, movedTask]);
 
-    // Skip the current task in schedule
-    skipTask(activeTaskId);
+      // Activate next task
+      if (nextTask) {
+        updateScheduledTask(nextTask.id, {
+          status: 'active',
+          actualStart: new Date().toISOString(),
+        });
+      }
 
-    // Activate next task
-    if (nextTask) {
-      updateScheduledTask(nextTask.id, {
-        status: 'active',
-        actualStart: new Date().toISOString(),
+      toast.success('Task moved to later today');
+    } else {
+      // Update the todo with new timeframe and notes
+      updateTodo(task.sourceId, {
+        timeframe: newTimeframe as Timeframe,
+        notes: notes || undefined,
       });
-    }
 
-    toast.success(`Task moved to ${newTimeframe.replace('_', ' ')}`);
+      // Find next task before skipping
+      const taskIndex = todaySchedule.findIndex((t) => t.id === activeTaskId);
+      const nextTask = todaySchedule.slice(taskIndex + 1).find((t) => t.sourceType !== 'break');
+
+      // Skip the current task in schedule
+      skipTask(activeTaskId);
+
+      // Activate next task
+      if (nextTask) {
+        updateScheduledTask(nextTask.id, {
+          status: 'active',
+          actualStart: new Date().toISOString(),
+        });
+      }
+
+      toast.success(`Task moved to ${newTimeframe.replace('_', ' ')}`);
+    }
   };
 
   // Get active task
